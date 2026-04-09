@@ -10,6 +10,8 @@ use Carbon\Carbon;
 
 class AttendanceController extends Controller
 {
+    private const WIB_TIMEZONE = 'Asia/Jakarta';
+
     /**
      * Show the QR scanner page
      */
@@ -41,9 +43,11 @@ class AttendanceController extends Controller
         $request->session()->regenerate();
         $request->session()->put('employee_portal_id', $employee->employee_id);
 
+        $todayWib = Carbon::now(self::WIB_TIMEZONE)->toDateString();
+
         // Get today's attendance records
         $todayRecords = Attendance::where('employee_id', $employee->employee_id)
-            ->whereDate('date', today())
+            ->whereDate('date', $todayWib)
             ->orderBy('time', 'asc')
             ->get();
 
@@ -53,7 +57,7 @@ class AttendanceController extends Controller
         // Calculate work duration if both IN and OUT exist
         $workDuration = null;
         if ($hasCheckedIn) {
-            $workDuration = Attendance::getWorkDuration($employee->employee_id, today());
+            $workDuration = Attendance::getWorkDuration($employee->employee_id, $todayWib);
         }
 
         return response()->json([
@@ -89,8 +93,8 @@ class AttendanceController extends Controller
         $request->validate([
             'employee_id' => 'required|string',
             'type' => 'required|in:IN,OUT,IZIN,SAKIT,TUKAR_LIBUR',
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
+            'latitude' => 'nullable|numeric|required_if:type,IN,OUT',
+            'longitude' => 'nullable|numeric|required_if:type,IN,OUT',
             'note' => 'nullable|string|max:500',
         ]);
 
@@ -104,6 +108,9 @@ class AttendanceController extends Controller
                 'message' => 'Karyawan tidak ditemukan.',
             ], 404);
         }
+
+        $nowWib = Carbon::now(self::WIB_TIMEZONE);
+        $todayWib = $nowWib->toDateString();
 
         // Only validate GPS for IN and OUT types
         $distance = null;
@@ -124,7 +131,7 @@ class AttendanceController extends Controller
         // Check duplicate for IN - only one IN per day
         if ($request->type === 'IN') {
             $existing = Attendance::where('employee_id', $employee->employee_id)
-                ->whereDate('date', today())
+                ->whereDate('date', $todayWib)
                 ->where('type', 'IN')
                 ->first();
             if ($existing) {
@@ -138,7 +145,7 @@ class AttendanceController extends Controller
         // Check duplicate for OUT - only one OUT per day
         if ($request->type === 'OUT') {
             $existing = Attendance::where('employee_id', $employee->employee_id)
-                ->whereDate('date', today())
+                ->whereDate('date', $todayWib)
                 ->where('type', 'OUT')
                 ->first();
             if ($existing) {
@@ -150,7 +157,7 @@ class AttendanceController extends Controller
 
             // Must have checked IN first
             $hasIn = Attendance::where('employee_id', $employee->employee_id)
-                ->whereDate('date', today())
+                ->whereDate('date', $todayWib)
                 ->where('type', 'IN')
                 ->exists();
             if (!$hasIn) {
@@ -161,12 +168,11 @@ class AttendanceController extends Controller
             }
         }
 
-        $now = Carbon::now();
         $attendance = Attendance::create([
             'employee_id' => $employee->employee_id,
             'type' => $request->type,
-            'date' => $now->toDateString(),
-            'time' => $now->toTimeString(),
+            'date' => $nowWib->toDateString(),
+            'time' => $nowWib->toTimeString(),
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
             'distance_meters' => $distance,
@@ -177,7 +183,7 @@ class AttendanceController extends Controller
         $workDuration = null;
         $workDurationFormatted = null;
         if ($request->type === 'OUT') {
-            $workDuration = Attendance::getWorkDuration($employee->employee_id, today());
+            $workDuration = Attendance::getWorkDuration($employee->employee_id, $todayWib);
             if ($workDuration) {
                 $hours = floor($workDuration / 60);
                 $minutes = $workDuration % 60;

@@ -34,8 +34,8 @@
                     Online
                 </div>
             </div>
-            <div class="text-xs text-[#b8a0b0] uppercase tracking-[2px] mb-1">Portal Karyawan</div>
-            <div class="text-2xl font-extrabold">Halo, {{ $employee->name }} 👋</div>
+            <div class="text-[11px] text-[#b8a0b0] font-bold mb-1">{{ $employee->employee_id }}</div>
+            <div class="text-2xl font-extrabold">{{ $employee->name }}</div>
             <div class="text-xs text-[#8a6b80] mt-1">{{ $employee->position ?? '-' }} · {{ $employee->department ?? '-' }}</div>
         </div>
 

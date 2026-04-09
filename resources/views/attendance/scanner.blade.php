@@ -1137,8 +1137,14 @@
             </div>
 
             <button class="btn-start-scanner" id="btnStartScanner" onclick="startScanner()">
-                <span>📸</span>
-                <span>Buka Kamera & Scan QR</span>
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" style="stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;">
+                    <path d="M4 8V6a2 2 0 0 1 2-2h2"></path>
+                    <path d="M20 8V6a2 2 0 0 0-2-2h-2"></path>
+                    <path d="M4 16v2a2 2 0 0 0 2 2h2"></path>
+                    <path d="M20 16v2a2 2 0 0 1-2 2h-2"></path>
+                    <path d="M8 12h8"></path>
+                </svg>
+                <span>Login</span>
             </button>
 
             <!-- <div class="or-divider"><span>atau</span></div> -->
@@ -1437,7 +1443,6 @@
                 }
 
                 showActionModal(data);
-                requestGPS();
             } catch (err) {
                 showResult(false, 'Error', 'Gagal menghubungi server. Periksa koneksi internet.');
             }
@@ -1491,6 +1496,11 @@
             document.getElementById('noteSection').classList.remove('active');
             document.getElementById('noteInput').value = '';
 
+            // GPS is requested only when user selects IN/OUT.
+            gpsPosition = null;
+            document.getElementById('gpsDot').className = 'gps-dot';
+            document.getElementById('gpsText').textContent = 'GPS hanya diperlukan untuk absen IN/OUT.';
+
             // Show modal
             document.getElementById('actionModal').classList.add('active');
         }
@@ -1507,6 +1517,15 @@
 
             const needsNote = ['IZIN', 'SAKIT', 'TUKAR_LIBUR'].includes(type);
             document.getElementById('noteSection').classList.toggle('active', needsNote);
+
+            const requiresGps = ['IN', 'OUT'].includes(type);
+            if (requiresGps) {
+                requestGPS();
+            } else {
+                gpsPosition = null;
+                document.getElementById('gpsDot').className = 'gps-dot active';
+                document.getElementById('gpsText').textContent = 'GPS tidak diperlukan untuk aksi ini.';
+            }
         }
 
         // GPS
@@ -1530,8 +1549,17 @@
                     text.textContent = `Lokasi ditemukan (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})`;
                 },
                 (err) => {
+                    gpsPosition = null;
                     dot.className = 'gps-dot error';
-                    text.textContent = 'Gagal mengambil lokasi. Izinkan akses GPS.';
+                    if (err.code === err.PERMISSION_DENIED) {
+                        text.textContent = 'Akses lokasi ditolak. Aktifkan izin lokasi di browser.';
+                    } else if (err.code === err.POSITION_UNAVAILABLE) {
+                        text.textContent = 'Lokasi tidak tersedia. Pastikan GPS perangkat aktif.';
+                    } else if (err.code === err.TIMEOUT) {
+                        text.textContent = 'Pengambilan lokasi timeout. Coba lagi.';
+                    } else {
+                        text.textContent = 'Gagal mengambil lokasi. Izinkan akses GPS.';
+                    }
                 },
                 { enableHighAccuracy: true, timeout: 15000 }
             );
@@ -1541,8 +1569,13 @@
         async function submitAttendance() {
             if (!selectedAction || !currentEmployee) return;
 
-            if (!gpsPosition) {
-                alert('Lokasi GPS belum didapatkan. Mohon tunggu atau izinkan akses lokasi.');
+            const requiresGps = ['IN', 'OUT'].includes(selectedAction);
+
+            if (requiresGps && !gpsPosition) {
+                showBlockingError(
+                    'Lokasi Tidak Terdeteksi',
+                    'Lokasi GPS belum didapatkan. Mohon aktifkan GPS dan izinkan akses lokasi untuk melanjutkan absen IN/OUT.'
+                );
                 requestGPS();
                 return;
             }
@@ -1561,8 +1594,10 @@
                     body: JSON.stringify({
                         employee_id: currentEmployee.employee_id,
                         type: selectedAction,
-                        latitude: gpsPosition.latitude,
-                        longitude: gpsPosition.longitude,
+                        ...(requiresGps && gpsPosition ? {
+                            latitude: gpsPosition.latitude,
+                            longitude: gpsPosition.longitude,
+                        } : {}),
                         note: document.getElementById('noteInput').value,
                     }),
                 });
@@ -1570,7 +1605,11 @@
                 const data = await response.json();
 
                 if (!response.ok) {
-                    showResult(false, 'Gagal', data.message);
+                    if (response.status === 422 && data.distance) {
+                        showBlockingError('Di Luar Radius', data.message || 'Anda berada di luar radius kantor.');
+                    } else {
+                        showBlockingError('Gagal', data.message || 'Absensi gagal diproses.');
+                    }
                 } else {
                     let details = `
                         <div class="detail-row"><span>Tanggal</span><span class="detail-value">${data.attendance.date}</span></div>
@@ -1612,6 +1651,13 @@
             document.getElementById('resultDetail').innerHTML = detailHtml;
             document.getElementById('resultDetail').style.display = detailHtml ? 'block' : 'none';
             document.getElementById('resultModal').classList.add('active');
+        }
+
+        function showBlockingError(title, message) {
+            closeModal();
+            setTimeout(() => {
+                showResult(false, title, message);
+            }, 120);
         }
 
         function closeResult() {

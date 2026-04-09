@@ -979,7 +979,7 @@
                             <circle cx="12" cy="13" r="3.5"></circle>
                         </svg>
                     </span>
-                    Kembali ke Scanner
+
                 </a>
             </div>
         </aside>
@@ -1463,8 +1463,7 @@
             }, 3000);
         }
 
-        // Auto refresh every 30 seconds
-        setInterval(loadData, 30000);
+        // Auto refresh disabled; data updates on manual actions (month/year change or page reload).
     </script>
 </body>
 </html>
