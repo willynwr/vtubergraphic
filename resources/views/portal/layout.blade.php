@@ -754,33 +754,81 @@
             stroke-linejoin: round;
         }
 
-        /* Toast */
-        .alert-toast {
+        /* Notice Modal + Confirm Modal */
+        .portal-modal-overlay {
             position: fixed;
-            top: 20px; right: 20px;
-            padding: 16px 24px;
-            border-radius: 14px;
-            font-size: 14px;
-            font-weight: 500;
-            z-index: 300;
-            animation: slideInRight 0.3s ease;
-            box-shadow: 0 10px 30px rgba(180, 120, 160, 0.15);
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(61, 43, 58, 0.42);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 220ms ease;
         }
-
-        .alert-toast.success {
-            background: rgba(141, 212, 176, 0.15);
-            color: #2f7c57;
+        .portal-modal-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
         }
-
-        .alert-toast.error {
-            background: rgba(232, 112, 112, 0.15);
-            color: #b54e4e;
+        .portal-modal-card {
+            width: 100%;
+            max-width: 400px;
+            border-radius: 24px;
+            border: 1px solid rgba(255,255,255,0.6);
+            background: rgba(255,255,255,0.94);
+            padding: 24px;
+            box-shadow: 0 20px 60px rgba(61,43,58,0.22);
+            transform: translateY(10px) scale(0.96);
+            opacity: 0;
+            transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease;
         }
-
-        @keyframes slideInRight {
-            from { opacity: 0; transform: translateX(30px); }
-            to { opacity: 1; transform: translateX(0); }
+        .portal-modal-overlay.show .portal-modal-card {
+            transform: translateY(0) scale(1);
+            opacity: 1;
         }
+        .portal-modal-icon {
+            width: 48px; height: 48px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
+        }
+        .portal-modal-icon.icon-error { background: linear-gradient(135deg, #e87070, #b388d9); color: white; }
+        .portal-modal-icon.icon-success { background: linear-gradient(135deg, #8dd4b0, #57b88b); color: white; }
+        .portal-modal-icon.icon-confirm { background: linear-gradient(135deg, #e87bb0, #b388d9); color: white; }
+        .portal-modal-icon svg {
+            width: 22px; height: 22px;
+            stroke: currentColor; fill: none;
+            stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+        }
+        .portal-modal-title {
+            font-size: 18px; font-weight: 800;
+            text-align: center; color: var(--text-primary); margin-bottom: 6px;
+        }
+        .portal-modal-message {
+            font-size: 13px; text-align: center;
+            color: var(--text-secondary); line-height: 1.6; margin-bottom: 18px;
+        }
+        .portal-modal-actions { display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .portal-modal-btn {
+            flex: 1; padding: 12px; border-radius: 14px;
+            font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: all 0.2s; text-align: center;
+        }
+        .portal-modal-btn.btn-cancel-modal {
+            background: #fff7fb; border: 1px solid #ead9e4; color: var(--text-secondary);
+        }
+        .portal-modal-btn.btn-cancel-modal:hover { background: #ffeef7; }
+        .portal-modal-btn.btn-primary-modal {
+            background: var(--gradient-primary); border: none; color: white; font-weight: 700;
+        }
+        .portal-modal-btn.btn-primary-modal:hover { box-shadow: 0 8px 20px rgba(232, 123, 176, 0.3); }
 
         /* Empty State */
         .empty-state {
@@ -1071,19 +1119,101 @@
         </main>
     </div>
 
+    <!-- Notice Modal (Success / Error) -->
+    <div class="portal-modal-overlay" id="portalNoticeOverlay" onclick="if(event.target.id==='portalNoticeOverlay') closePortalNotice()">
+        <div class="portal-modal-card">
+            <div class="portal-modal-icon" id="portalNoticeIcon">
+                <svg id="portalNoticeIconError" viewBox="0 0 24 24"><path d="M12 8v4"></path><path d="M12 16h.01"></path><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>
+                <svg id="portalNoticeIconSuccess" viewBox="0 0 24 24" style="display:none;"><path d="M20 6 9 17l-5-5"></path></svg>
+            </div>
+            <div class="portal-modal-title" id="portalNoticeTitle">Error</div>
+            <div class="portal-modal-message" id="portalNoticeMessage">-</div>
+            <div class="portal-modal-actions">
+                <button class="portal-modal-btn btn-primary-modal" onclick="closePortalNotice()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div class="portal-modal-overlay" id="portalConfirmOverlay" onclick="if(event.target.id==='portalConfirmOverlay') closePortalConfirm()">
+        <div class="portal-modal-card">
+            <div class="portal-modal-icon icon-confirm">
+                <svg viewBox="0 0 24 24"><path d="M12 8v4"></path><path d="M12 16h.01"></path><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>
+            </div>
+            <div class="portal-modal-title" id="portalConfirmTitle">Konfirmasi</div>
+            <div class="portal-modal-message" id="portalConfirmMessage">Yakin?</div>
+            <div class="portal-modal-actions">
+                <button class="portal-modal-btn btn-cancel-modal" onclick="closePortalConfirm()">Batal</button>
+                <button class="portal-modal-btn btn-primary-modal" onclick="executePortalConfirm()">Ya, lanjut</button>
+            </div>
+        </div>
+    </div>
+
     <script>
+        let portalNoticeShouldReload = false;
+        let pendingPortalConfirmAction = null;
+
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('open');
             document.getElementById('sidebarOverlay').classList.toggle('active');
         }
 
-        function showToast(message, type = 'success') {
-            const toast = document.createElement('div');
-            toast.className = `alert-toast ${type}`;
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 4000);
+        function showNoticeModal(message, title = 'Error', variant = 'error', shouldReload = false) {
+            const titleEl = document.getElementById('portalNoticeTitle');
+            const messageEl = document.getElementById('portalNoticeMessage');
+            const iconWrap = document.getElementById('portalNoticeIcon');
+            const iconError = document.getElementById('portalNoticeIconError');
+            const iconSuccess = document.getElementById('portalNoticeIconSuccess');
+            if (titleEl) titleEl.textContent = title;
+            if (messageEl) messageEl.textContent = message;
+            portalNoticeShouldReload = shouldReload;
+            if (iconWrap && iconError && iconSuccess) {
+                if (variant === 'success') {
+                    iconWrap.className = 'portal-modal-icon icon-success';
+                    iconError.style.display = 'none'; iconSuccess.style.display = '';
+                } else {
+                    iconWrap.className = 'portal-modal-icon icon-error';
+                    iconSuccess.style.display = 'none'; iconError.style.display = '';
+                }
+            }
+            const overlay = document.getElementById('portalNoticeOverlay');
+            if (overlay) requestAnimationFrame(() => overlay.classList.add('show'));
         }
+
+        function closePortalNotice() {
+            const overlay = document.getElementById('portalNoticeOverlay');
+            if (overlay) overlay.classList.remove('show');
+            if (portalNoticeShouldReload) { portalNoticeShouldReload = false; window.location.reload(); }
+        }
+
+        function showConfirmModal(title, message, onConfirm) {
+            document.getElementById('portalConfirmTitle').textContent = title;
+            document.getElementById('portalConfirmMessage').textContent = message;
+            pendingPortalConfirmAction = onConfirm;
+            const overlay = document.getElementById('portalConfirmOverlay');
+            if (overlay) requestAnimationFrame(() => overlay.classList.add('show'));
+        }
+
+        function closePortalConfirm() {
+            const overlay = document.getElementById('portalConfirmOverlay');
+            if (overlay) overlay.classList.remove('show');
+            pendingPortalConfirmAction = null;
+        }
+
+        function executePortalConfirm() {
+            const action = pendingPortalConfirmAction;
+            closePortalConfirm();
+            if (typeof action === 'function') action();
+        }
+
+        // Backward compatibility alias
+        function showToast(message, type = 'success') {
+            showNoticeModal(message, type === 'success' ? 'Berhasil' : 'Gagal', type === 'success' ? 'success' : 'error');
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') { closePortalNotice(); closePortalConfirm(); }
+        });
     </script>
     @yield('scripts')
 </body>

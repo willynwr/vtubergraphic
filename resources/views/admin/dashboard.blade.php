@@ -189,6 +189,33 @@
             background: var(--bg-glass);
         }
 
+        .sidebar-footer form {
+            margin-top: 8px;
+        }
+
+        .sidebar-footer .logout-btn {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-muted);
+            background: transparent;
+            border: none;
+            text-decoration: none;
+            font-size: 13px;
+            padding: 10px 8px;
+            border-radius: 10px;
+            transition: all 0.2s;
+            font-family: 'Poppins', sans-serif;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .sidebar-footer .logout-btn:hover {
+            color: var(--accent-red);
+            background: rgba(232, 112, 112, 0.08);
+        }
+
         /* Main Content */
         .main-content {
             flex: 1;
@@ -856,32 +883,121 @@
         }
 
         .alert-toast {
+            display: none;
+        }
+
+        /* Notice Modal + Confirm Modal */
+        .admin-modal-overlay {
             position: fixed;
-            top: 20px; right: 20px;
-            padding: 16px 24px;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(61, 43, 58, 0.42);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 220ms ease;
+        }
+        .admin-modal-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .admin-modal-card {
+            width: 100%;
+            max-width: 400px;
+            border-radius: 24px;
+            border: 1px solid rgba(255,255,255,0.6);
+            background: rgba(255,255,255,0.94);
+            padding: 24px;
+            box-shadow: 0 20px 60px rgba(61,43,58,0.22);
+            transform: translateY(10px) scale(0.96);
+            opacity: 0;
+            transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease;
+        }
+        .admin-modal-overlay.show .admin-modal-card {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+        }
+        .admin-modal-icon {
+            width: 48px; height: 48px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
+        }
+        .admin-modal-icon.icon-error {
+            background: linear-gradient(135deg, #e87070, #b388d9);
+            color: white;
+        }
+        .admin-modal-icon.icon-success {
+            background: linear-gradient(135deg, #8dd4b0, #57b88b);
+            color: white;
+        }
+        .admin-modal-icon.icon-confirm {
+            background: linear-gradient(135deg, #e87bb0, #b388d9);
+            color: white;
+        }
+        .admin-modal-icon svg {
+            width: 22px; height: 22px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .admin-modal-title {
+            font-size: 18px;
+            font-weight: 800;
+            text-align: center;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+        .admin-modal-message {
+            font-size: 13px;
+            text-align: center;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 18px;
+        }
+        .admin-modal-actions {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .admin-modal-btn {
+            flex: 1;
+            padding: 12px;
             border-radius: 14px;
-            font-size: 14px;
-            font-weight: 500;
-            z-index: 300;
-            animation: slideInRight 0.3s ease;
-            box-shadow: 0 10px 30px rgba(180, 120, 160, 0.15);
+            font-family: 'Poppins', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
         }
-
-        .alert-toast.success {
-            background: rgba(16, 185, 129, 0.15);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-            color: var(--accent-green);
+        .admin-modal-btn.btn-cancel-modal {
+            background: rgba(255, 247, 251, 1);
+            border: 1px solid rgba(234, 217, 228, 1);
+            color: var(--text-secondary);
         }
-
-        .alert-toast.error {
-            background: rgba(239, 68, 68, 0.15);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            color: var(--accent-red);
+        .admin-modal-btn.btn-cancel-modal:hover {
+            background: rgba(255, 238, 247, 1);
         }
-
-        @keyframes slideInRight {
-            from { opacity: 0; transform: translateX(30px); }
-            to { opacity: 1; transform: translateX(0); }
+        .admin-modal-btn.btn-primary-modal {
+            background: var(--gradient-primary);
+            border: none;
+            color: white;
+            font-weight: 700;
+        }
+        .admin-modal-btn.btn-primary-modal:hover {
+            box-shadow: 0 8px 20px rgba(232, 123, 176, 0.3);
         }
 
         /* Responsive */
@@ -913,7 +1029,7 @@
 
             <nav class="sidebar-nav">
                 <div class="nav-label">Menu</div>
-                <a class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
+                <a class="nav-item" href="{{ route('admin.dashboard') }}" id="nav-dashboard">
                     <span class="nav-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24">
                             <path d="M4 20h16"></path>
@@ -924,7 +1040,7 @@
                     </span>
                     Dashboard
                 </a>
-                <a class="nav-item" onclick="showPage('employees')" id="nav-employees">
+                <a class="nav-item" href="{{ route('admin.employees') }}" id="nav-employees">
                     <span class="nav-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24">
                             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
@@ -935,7 +1051,7 @@
                     </span>
                     Karyawan
                 </a>
-                <a class="nav-item" onclick="showPage('locations')" id="nav-locations">
+                <a class="nav-item" href="{{ route('admin.locations') }}" id="nav-locations">
                     <span class="nav-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24">
                             <path d="M12 21s6-5.2 6-11a6 6 0 1 0-12 0c0 5.8 6 11 6 11z"></path>
@@ -944,7 +1060,7 @@
                     </span>
                     Lokasi Kantor
                 </a>
-                <a class="nav-item" onclick="showPage('schedules')" id="nav-schedules">
+                <a class="nav-item" href="{{ route('admin.schedules') }}" id="nav-schedules">
                     <span class="nav-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24">
                             <path d="M8 2v4"></path>
@@ -957,7 +1073,7 @@
                 </a>
 
                 <div class="nav-label">Lainnya</div>
-                <a class="nav-item" onclick="showPage('history')" id="nav-history">
+                <a class="nav-item" href="{{ route('admin.history') }}" id="nav-history">
                     <span class="nav-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24">
                             <path d="M9 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-4"></path>
@@ -979,8 +1095,22 @@
                             <circle cx="12" cy="13" r="3.5"></circle>
                         </svg>
                     </span>
-
+                    Kembali ke Scanner
                 </a>
+
+                <form method="POST" action="{{ route('admin.logout') }}">
+                    @csrf
+                    <button type="submit" class="logout-btn">
+                        <span class="nav-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                <polyline points="16 17 21 12 16 7"></polyline>
+                                <line x1="21" y1="12" x2="9" y2="12"></line>
+                            </svg>
+                        </span>
+                        Logout Admin
+                    </button>
+                </form>
             </div>
         </aside>
 
@@ -1009,13 +1139,45 @@
         </div>
     </div>
 
+    <!-- Notice Modal (Success / Error) -->
+    <div class="admin-modal-overlay" id="adminNoticeOverlay" onclick="if(event.target.id==='adminNoticeOverlay') closeAdminNotice()">
+        <div class="admin-modal-card">
+            <div class="admin-modal-icon" id="adminNoticeIcon">
+                <svg id="adminNoticeIconError" viewBox="0 0 24 24"><path d="M12 8v4"></path><path d="M12 16h.01"></path><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>
+                <svg id="adminNoticeIconSuccess" viewBox="0 0 24 24" style="display:none;"><path d="M20 6 9 17l-5-5"></path></svg>
+            </div>
+            <div class="admin-modal-title" id="adminNoticeTitle">Error</div>
+            <div class="admin-modal-message" id="adminNoticeMessage">-</div>
+            <div class="admin-modal-actions">
+                <button class="admin-modal-btn btn-primary-modal" onclick="closeAdminNotice()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div class="admin-modal-overlay" id="adminConfirmOverlay" onclick="if(event.target.id==='adminConfirmOverlay') closeAdminConfirm()">
+        <div class="admin-modal-card">
+            <div class="admin-modal-icon icon-confirm">
+                <svg viewBox="0 0 24 24"><path d="M12 8v4"></path><path d="M12 16h.01"></path><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>
+            </div>
+            <div class="admin-modal-title" id="adminConfirmTitle">Konfirmasi</div>
+            <div class="admin-modal-message" id="adminConfirmMessage">Yakin?</div>
+            <div class="admin-modal-actions">
+                <button class="admin-modal-btn btn-cancel-modal" onclick="closeAdminConfirm()">Batal</button>
+                <button class="admin-modal-btn btn-primary-modal" onclick="executeAdminConfirm()">Ya, lanjut</button>
+            </div>
+        </div>
+    </div>
+
     <script type="application/json" id="initialSummaryData">@json($summary)</script>
     <script type="application/json" id="initialTodaySummaryData">@json($todaySummary)</script>
+    <script type="application/json" id="initialActivePage">@json($activePage ?? 'dashboard')</script>
 
     <script>
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
         const initialSummary = JSON.parse(document.getElementById('initialSummaryData').textContent);
         const initialTodaySummary = JSON.parse(document.getElementById('initialTodaySummaryData').textContent);
+        const initialPage = JSON.parse(document.getElementById('initialActivePage').textContent);
 
         // Set today's date
         document.getElementById('todayDateText').textContent = new Date().toLocaleDateString('id-ID', {
@@ -1156,6 +1318,11 @@
 
         // Navigation
         function showPage(page) {
+            const allowedPages = ['dashboard', 'employees', 'locations', 'schedules', 'history'];
+            if (!allowedPages.includes(page)) {
+                page = 'dashboard';
+            }
+
             document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.getElementById('page-' + page).classList.add('active');
@@ -1165,6 +1332,8 @@
             document.getElementById('sidebar').classList.remove('open');
             document.getElementById('sidebarOverlay').classList.remove('active');
         }
+
+        showPage(initialPage);
 
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('open');
@@ -1200,46 +1369,57 @@
             };
 
             if (!data.employee_id || !data.name) {
-                showToast('ID dan Nama wajib diisi', 'error');
+                showNoticeModal('ID dan Nama wajib diisi.', 'Validasi Gagal');
                 return;
             }
 
-            try {
-                const res = await fetch('/admin/employees', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-                    body: JSON.stringify(data),
-                });
-                const result = await res.json();
+            showConfirmModal(
+                'Tambah Karyawan',
+                `Tambahkan karyawan "${data.name}" (${data.employee_id})?`,
+                async () => {
+                    try {
+                        const res = await fetch('/admin/employees', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                            body: JSON.stringify(data),
+                        });
+                        const result = await res.json();
 
-                if (result.success) {
-                    showToast(result.message, 'success');
-                    location.reload();
-                } else {
-                    showToast(result.message || 'Gagal menambahkan', 'error');
+                        if (result.success) {
+                            showNoticeModal(result.message, 'Berhasil', 'success', true);
+                        } else {
+                            showNoticeModal(result.message || 'Gagal menambahkan.', 'Gagal');
+                        }
+                    } catch (err) {
+                        showNoticeModal('Error: ' + err.message, 'Error');
+                    }
                 }
-            } catch (err) {
-                showToast('Error: ' + err.message, 'error');
-            }
+            );
         }
 
         async function deleteEmployee(id) {
-            if (!confirm('Yakin hapus karyawan ini? Semua data absensi akan ikut terhapus.')) return;
+            showConfirmModal(
+                'Hapus Karyawan',
+                'Yakin hapus karyawan ini? Semua data absensi akan ikut terhapus.',
+                async () => {
+                    try {
+                        const res = await fetch(`/admin/employees/${id}`, {
+                            method: 'DELETE',
+                            headers: { 'X-CSRF-TOKEN': csrfToken },
+                        });
+                        const result = await res.json();
 
-            try {
-                const res = await fetch(`/admin/employees/${id}`, {
-                    method: 'DELETE',
-                    headers: { 'X-CSRF-TOKEN': csrfToken },
-                });
-                const result = await res.json();
-
-                if (result.success) {
-                    document.getElementById('emp-row-' + id)?.remove();
-                    showToast(result.message, 'success');
+                        if (result.success) {
+                            document.getElementById('emp-row-' + id)?.remove();
+                            showNoticeModal(result.message, 'Berhasil', 'success');
+                        } else {
+                            showNoticeModal(result.message || 'Gagal menghapus.', 'Gagal');
+                        }
+                    } catch (err) {
+                        showNoticeModal('Gagal menghapus karyawan.', 'Error');
+                    }
                 }
-            } catch (err) {
-                showToast('Gagal menghapus', 'error');
-            }
+            );
         }
 
         async function showEmployeeDetail(id) {
@@ -1327,43 +1507,56 @@
             };
 
             if (!data.name || isNaN(data.latitude) || isNaN(data.longitude)) {
-                showToast('Semua field wajib diisi', 'error');
+                showNoticeModal('Nama, Latitude, dan Longitude wajib diisi.', 'Validasi Gagal');
                 return;
             }
 
-            try {
-                const res = await fetch('/admin/locations', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-                    body: JSON.stringify(data),
-                });
-                const result = await res.json();
+            showConfirmModal(
+                'Tambah Lokasi',
+                `Tambahkan lokasi "${data.name}" dengan radius ${data.radius_meters || 1000}m?`,
+                async () => {
+                    try {
+                        const res = await fetch('/admin/locations', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                            body: JSON.stringify(data),
+                        });
+                        const result = await res.json();
 
-                if (result.success) {
-                    showToast(result.message, 'success');
-                    location.reload();
+                        if (result.success) {
+                            showNoticeModal(result.message, 'Berhasil', 'success', true);
+                        } else {
+                            showNoticeModal(result.message || 'Gagal menambahkan.', 'Gagal');
+                        }
+                    } catch (err) {
+                        showNoticeModal('Gagal menambahkan lokasi.', 'Error');
+                    }
                 }
-            } catch (err) {
-                showToast('Gagal menambahkan', 'error');
-            }
+            );
         }
 
         async function deleteLocation(id) {
-            if (!confirm('Yakin hapus lokasi ini?')) return;
-
-            try {
-                const res = await fetch(`/admin/locations/${id}`, {
-                    method: 'DELETE',
-                    headers: { 'X-CSRF-TOKEN': csrfToken },
-                });
-                const result = await res.json();
-                if (result.success) {
-                    document.getElementById('loc-row-' + id)?.remove();
-                    showToast(result.message, 'success');
+            showConfirmModal(
+                'Hapus Lokasi',
+                'Yakin hapus lokasi kantor ini?',
+                async () => {
+                    try {
+                        const res = await fetch(`/admin/locations/${id}`, {
+                            method: 'DELETE',
+                            headers: { 'X-CSRF-TOKEN': csrfToken },
+                        });
+                        const result = await res.json();
+                        if (result.success) {
+                            document.getElementById('loc-row-' + id)?.remove();
+                            showNoticeModal(result.message, 'Berhasil', 'success');
+                        } else {
+                            showNoticeModal(result.message || 'Gagal menghapus.', 'Gagal');
+                        }
+                    } catch (err) {
+                        showNoticeModal('Gagal menghapus lokasi.', 'Error');
+                    }
                 }
-            } catch (err) {
-                showToast('Gagal menghapus', 'error');
-            }
+            );
         }
 
         function getMyLocation() {
@@ -1422,48 +1615,197 @@
 
         // Swap request approval
         async function approveSwap(id) {
-            if (!confirm('Setujui permintaan tukar libur ini?')) return;
-            try {
-                const res = await fetch(`/admin/swap-requests/${id}/approve`, {
-                    method: 'POST',
-                    headers: { 'X-CSRF-TOKEN': csrfToken },
-                });
-                const data = await res.json();
-                if (!res.ok) { showToast(data.message || 'Gagal menyetujui.', 'error'); return; }
-                document.getElementById('swap-row-' + id)?.remove();
-                showToast('Request berhasil disetujui!', 'success');
-            } catch (err) { showToast('Error saat menyetujui.', 'error'); }
+            showConfirmModal(
+                'Setujui Tukar Libur',
+                'Setujui permintaan tukar libur ini?',
+                async () => {
+                    try {
+                        const res = await fetch(`/admin/swap-requests/${id}/approve`, {
+                            method: 'POST',
+                            headers: { 'X-CSRF-TOKEN': csrfToken },
+                        });
+                        const data = await res.json();
+                        if (!res.ok) {
+                            showNoticeModal(data.message || 'Gagal menyetujui.', 'Gagal');
+                            return;
+                        }
+                        document.getElementById('swap-row-' + id)?.remove();
+                        showNoticeModal('Request berhasil disetujui!', 'Berhasil', 'success', true);
+                    } catch (err) {
+                        showNoticeModal('Error saat menyetujui.', 'Error');
+                    }
+                }
+            );
         }
 
         async function rejectSwap(id) {
-            if (!confirm('Tolak permintaan tukar libur ini?')) return;
-            try {
-                const res = await fetch(`/admin/swap-requests/${id}/reject`, {
-                    method: 'POST',
-                    headers: { 'X-CSRF-TOKEN': csrfToken },
-                });
-                const data = await res.json();
-                if (!res.ok) { showToast(data.message || 'Gagal menolak.', 'error'); return; }
-                document.getElementById('swap-row-' + id)?.remove();
-                showToast('Request berhasil ditolak.', 'success');
-            } catch (err) { showToast('Error saat menolak.', 'error'); }
+            showConfirmModal(
+                'Tolak Tukar Libur',
+                'Tolak permintaan tukar libur ini?',
+                async () => {
+                    try {
+                        const res = await fetch(`/admin/swap-requests/${id}/reject`, {
+                            method: 'POST',
+                            headers: { 'X-CSRF-TOKEN': csrfToken },
+                        });
+                        const data = await res.json();
+                        if (!res.ok) {
+                            showNoticeModal(data.message || 'Gagal menolak.', 'Gagal');
+                            return;
+                        }
+                        document.getElementById('swap-row-' + id)?.remove();
+                        showNoticeModal('Request berhasil ditolak.', 'Berhasil', 'success', true);
+                    } catch (err) {
+                        showNoticeModal('Error saat menolak.', 'Error');
+                    }
+                }
+            );
         }
 
-        // Toast
+        async function updateSingleScheduleDay(selectEl) {
+            const scheduleId = Number(selectEl.dataset.scheduleId);
+            const employeeId = selectEl.dataset.employeeId;
+            const newDay = Number(selectEl.value);
+            const oldDay = Number(selectEl.dataset.originalDay);
+
+            if (!scheduleId || !employeeId) {
+                showToast('Data jadwal tidak valid.', 'error');
+                return;
+            }
+
+            if (newDay === oldDay) {
+                return;
+            }
+
+            const row = selectEl.closest('tr');
+            const allValues = Array.from(row.querySelectorAll('.schedule-day-select')).map((el) => Number(el.value));
+            if (new Set(allValues).size !== allValues.length) {
+                showNoticeModal('Hari libur tidak boleh duplikat.', 'Validasi Gagal');
+                selectEl.value = String(oldDay);
+                return;
+            }
+
+            showConfirmModal(
+                'Ubah Hari Libur',
+                'Yakin ingin mengubah hari libur karyawan ini?',
+                async () => {
+                    try {
+                        const addRes = await fetch('/admin/schedules', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                            },
+                            body: JSON.stringify({ employee_id: employeeId, day_of_week: newDay }),
+                        });
+
+                        if (!addRes.ok) {
+                            showNoticeModal('Gagal menyimpan hari libur baru.', 'Gagal');
+                            selectEl.value = String(oldDay);
+                            return;
+                        }
+
+                        const deleteRes = await fetch(`/admin/schedules/${scheduleId}`, {
+                            method: 'DELETE',
+                            headers: { 'X-CSRF-TOKEN': csrfToken },
+                        });
+
+                        if (!deleteRes.ok) {
+                            showNoticeModal('Gagal mengganti hari libur lama.', 'Gagal');
+                            selectEl.value = String(oldDay);
+                            return;
+                        }
+
+                        showNoticeModal('Hari libur berhasil diubah.', 'Berhasil', 'success', true);
+                    } catch (err) {
+                        showNoticeModal('Gagal memperbarui hari libur.', 'Error');
+                        selectEl.value = String(oldDay);
+                    }
+                }
+            );
+        }
+
+        // showToast replaced by showNoticeModal — kept as alias for compatibility
         function showToast(message, type = 'success') {
-            const toast = document.createElement('div');
-            toast.className = `alert-toast ${type}`;
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translateX(30px)';
-                toast.style.transition = 'all 0.3s';
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
+            if (type === 'success') {
+                showNoticeModal(message, 'Berhasil', 'success');
+            } else {
+                showNoticeModal(message, 'Gagal', 'error');
+            }
         }
 
         // Auto refresh disabled; data updates on manual actions (month/year change or page reload).
+
+        // ======= Notice Modal (replaces showToast) =======
+        let adminNoticeShouldReload = false;
+
+        function showNoticeModal(message, title = 'Error', variant = 'error', shouldReload = false) {
+            const titleEl = document.getElementById('adminNoticeTitle');
+            const messageEl = document.getElementById('adminNoticeMessage');
+            const iconWrap = document.getElementById('adminNoticeIcon');
+            const iconError = document.getElementById('adminNoticeIconError');
+            const iconSuccess = document.getElementById('adminNoticeIconSuccess');
+
+            if (titleEl) titleEl.textContent = title;
+            if (messageEl) messageEl.textContent = message;
+            adminNoticeShouldReload = shouldReload;
+
+            if (iconWrap && iconError && iconSuccess) {
+                if (variant === 'success') {
+                    iconWrap.className = 'admin-modal-icon icon-success';
+                    iconError.style.display = 'none';
+                    iconSuccess.style.display = '';
+                } else {
+                    iconWrap.className = 'admin-modal-icon icon-error';
+                    iconSuccess.style.display = 'none';
+                    iconError.style.display = '';
+                }
+            }
+
+            const overlay = document.getElementById('adminNoticeOverlay');
+            if (overlay) requestAnimationFrame(() => overlay.classList.add('show'));
+        }
+
+        function closeAdminNotice() {
+            const overlay = document.getElementById('adminNoticeOverlay');
+            if (overlay) overlay.classList.remove('show');
+            if (adminNoticeShouldReload) {
+                adminNoticeShouldReload = false;
+                window.location.reload();
+            }
+        }
+
+        // ======= Confirm Modal (replaces confirm()) =======
+        let pendingAdminConfirmAction = null;
+
+        function showConfirmModal(title, message, onConfirm) {
+            document.getElementById('adminConfirmTitle').textContent = title;
+            document.getElementById('adminConfirmMessage').textContent = message;
+            pendingAdminConfirmAction = onConfirm;
+            const overlay = document.getElementById('adminConfirmOverlay');
+            if (overlay) requestAnimationFrame(() => overlay.classList.add('show'));
+        }
+
+        function closeAdminConfirm() {
+            const overlay = document.getElementById('adminConfirmOverlay');
+            if (overlay) overlay.classList.remove('show');
+            pendingAdminConfirmAction = null;
+        }
+
+        function executeAdminConfirm() {
+            const action = pendingAdminConfirmAction;
+            closeAdminConfirm();
+            if (typeof action === 'function') action();
+        }
+
+        // Escape key closes modals
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeAdminNotice();
+                closeAdminConfirm();
+                closeDetailModal();
+            }
+        });
     </script>
 </body>
 </html>

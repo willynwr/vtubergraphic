@@ -48,6 +48,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         // Off Day (Jadwal Libur) Management
         Route::get('/schedules', [AdminController::class, 'workSchedules'])->name('schedules');
+        Route::get('/history', [AdminController::class, 'history'])->name('history');
         Route::post('/schedules', [AdminController::class, 'storeWorkSchedule'])->name('schedules.store');
         Route::delete('/schedules/{schedule:id}', [AdminController::class, 'deleteWorkSchedule'])->name('schedules.delete');
         Route::post('/swap-requests/{swapRequest}/approve', [AdminController::class, 'approveSwapRequest'])->name('swap-requests.approve');

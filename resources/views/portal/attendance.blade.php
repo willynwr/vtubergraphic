@@ -185,10 +185,6 @@
         </div>
     </div>
 
-    {{-- Toast --}}
-    <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 z-[300] hidden">
-        <div class="py-3.5 px-6 rounded-[14px] text-[13px] font-semibold max-w-[90vw]" id="toastInner"></div>
-    </div>
 
     {{-- Confirm Modal (IN/OUT) --}}
     <div id="attendanceConfirmOverlay" class="attendance-confirm-overlay fixed inset-0 z-[350] flex items-center justify-center p-5" onclick="closeAttendanceConfirmIfBackdrop(event)">
@@ -501,12 +497,11 @@
         setInterval(updateRunningClock, 1000);
 
         function showToast(msg, type = 'success') {
-            const t = document.getElementById('toast');
-            const inner = document.getElementById('toastInner');
-            inner.textContent = msg;
-            inner.className = `py-3.5 px-6 rounded-[14px] text-[13px] font-semibold max-w-[90vw] ${type === 'success' ? 'bg-[#8dd4b0f2] text-[#1a4d35]' : 'bg-[#e87070f2] text-white'}`;
-            t.classList.remove('hidden');
-            setTimeout(() => t.classList.add('hidden'), 4000);
+            if (type === 'success') {
+                showNoticeModal(msg, 'Berhasil', 'success');
+            } else {
+                showNoticeModal(msg, 'Gagal', 'error');
+            }
         }
 
         async function startCamera(type) {

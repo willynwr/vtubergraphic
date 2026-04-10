@@ -8,58 +8,24 @@ use App\Models\OfficeLocation;
 use App\Models\ScheduleSwapRequest;
 use App\Models\OffDay;
 use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Builder;
 use Carbon\Carbon;
 
 class AdminController extends Controller
 {
-    private const ADMIN_PASSWORD = 'pshtjaya';
+    private const ADMIN_GENERAL_PASSWORD = 'pshtjaya';
+    private const ADMIN_CC_PASSWORD = 'capcutcapcut';
+    private const ADMIN_SCOPE_GENERAL = 'general';
+    private const ADMIN_SCOPE_CC = 'cc';
+    private const SESSION_ADMIN_PASSED = 'admin_password_passed';
+    private const SESSION_ADMIN_SCOPE = 'admin_scope';
 
     /**
      * Admin dashboard
      */
     public function dashboard(Request $request)
     {
-        $month = $request->get('month', now()->month);
-        $year = $request->get('year', now()->year);
-
-        // Monthly summary
-        $summary = $this->getMonthlySummary($month, $year);
-
-        // Employee list with monthly stats
-        $employees = Employee::withCount('attendances')->where('is_active', true)->get();
-        $employeeStats = $this->getEmployeeStats($employees, $month, $year);
-
-        // Recent attendance records
-        $recentAttendances = Attendance::with('employee')
-            ->whereMonth('date', $month)
-            ->whereYear('date', $year)
-            ->orderBy('created_at', 'desc')
-            ->limit(50)
-            ->get();
-
-        // Today's status
-        $todaySummary = $this->getTodaySummary();
-
-        // Locations for the locations page
-        $locations = OfficeLocation::all();
-
-        // Pending swap requests for quick approval
-        $pendingSwapRequests = ScheduleSwapRequest::with(['employee', 'swapWithEmployee'])
-            ->where('status', ScheduleSwapRequest::STATUS_PENDING)
-            ->orderByDesc('created_at')
-            ->get();
-
-        return view('admin.dashboard', compact(
-            'summary',
-            'employeeStats',
-            'recentAttendances',
-            'todaySummary',
-            'month',
-            'year',
-            'employees',
-            'locations',
-            'pendingSwapRequests'
-        ));
+        return $this->renderAdminPanel($request, 'dashboard');
     }
 
     /**
@@ -67,7 +33,7 @@ class AdminController extends Controller
      */
     public function showPasswordForm()
     {
-        if (session('admin_password_passed') === true) {
+        if (session(self::SESSION_ADMIN_PASSED) === true) {
             return redirect()->route('admin.dashboard');
         }
 
@@ -83,13 +49,21 @@ class AdminController extends Controller
             'password' => 'required|string',
         ]);
 
-        if ($request->input('password') !== self::ADMIN_PASSWORD) {
+        $scope = null;
+        if ($request->input('password') === self::ADMIN_CC_PASSWORD) {
+            $scope = self::ADMIN_SCOPE_CC;
+        } elseif ($request->input('password') === self::ADMIN_GENERAL_PASSWORD) {
+            $scope = self::ADMIN_SCOPE_GENERAL;
+        }
+
+        if ($scope === null) {
             return back()
                 ->withErrors(['password' => 'Password admin salah.'])
                 ->withInput();
         }
 
-        $request->session()->put('admin_password_passed', true);
+        $request->session()->put(self::SESSION_ADMIN_PASSED, true);
+        $request->session()->put(self::SESSION_ADMIN_SCOPE, $scope);
 
         return redirect()->route('admin.dashboard');
     }
@@ -99,7 +73,7 @@ class AdminController extends Controller
      */
     public function logoutPassword(Request $request)
     {
-        $request->session()->forget('admin_password_passed');
+        $request->session()->forget([self::SESSION_ADMIN_PASSED, self::SESSION_ADMIN_SCOPE]);
 
         return redirect()->route('admin.password.form');
     }
@@ -112,14 +86,18 @@ class AdminController extends Controller
         $month = $request->get('month', now()->month);
         $year = $request->get('year', now()->year);
 
-        $summary = $this->getMonthlySummary($month, $year);
-        $employees = Employee::where('is_active', true)->get();
+        $summary = $this->getMonthlySummary($month, $year, $request);
+        $employees = Employee::where('is_active', true);
+        $employees = $this->applyEmployeeScope($employees, $request)->get();
         $employeeStats = $this->getEmployeeStats($employees, $month, $year);
-        $todaySummary = $this->getTodaySummary();
+        $todaySummary = $this->getTodaySummary($request);
 
         $recentAttendances = Attendance::with('employee')
             ->whereMonth('date', $month)
             ->whereYear('date', $year)
+            ->whereHas('employee', function ($query) use ($request) {
+                $this->applyEmployeeScope($query, $request);
+            })
             ->orderBy('created_at', 'desc')
             ->limit(50)
             ->get()
@@ -151,11 +129,7 @@ class AdminController extends Controller
      */
     public function employees(Request $request)
     {
-        $employees = Employee::withCount('attendances')
-            ->orderBy('name')
-            ->get();
-
-        return view('admin.employees', compact('employees'));
+        return $this->renderAdminPanel($request, 'employees');
     }
 
     /**
@@ -170,6 +144,23 @@ class AdminController extends Controller
             'position' => 'nullable|string|max:255',
         ]);
 
+        $department = $request->input('department');
+        $isCcDepartment = $this->isCcDepartment($department);
+
+        if ($this->isCcAdmin($request) && !$isCcDepartment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Admin CC hanya dapat menambahkan karyawan departemen CC.',
+            ], 422);
+        }
+
+        if (!$this->isCcAdmin($request) && $isCcDepartment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Admin general tidak memiliki akses untuk data departemen CC.',
+            ], 403);
+        }
+
         $employee = Employee::create($request->only(['employee_id', 'name', 'department', 'position']));
 
         return response()->json([
@@ -182,8 +173,12 @@ class AdminController extends Controller
     /**
      * Delete employee
      */
-    public function deleteEmployee(Employee $employee)
+    public function deleteEmployee(Employee $employee, Request $request)
     {
+        if (!$this->canAccessEmployee($employee, $request)) {
+            abort(403, 'Akses ditolak untuk data karyawan ini.');
+        }
+
         $employee->delete();
 
         return response()->json([
@@ -195,36 +190,25 @@ class AdminController extends Controller
     /**
      * Office location management
      */
-    public function locations()
+    public function locations(Request $request)
     {
-        $locations = OfficeLocation::all();
-        return view('admin.locations', compact('locations'));
+        return $this->renderAdminPanel($request, 'locations');
     }
 
     /**
      * Off day schedule management page
      */
-    public function workSchedules()
+    public function workSchedules(Request $request)
     {
-        $employees = Employee::with('offDays')->where('is_active', true)->orderBy('name')->get();
-        $schedules = OffDay::with('employee')
-            ->orderBy('employee_id')
-            ->orderBy('day_of_week')
-            ->get();
-        $swapRequests = ScheduleSwapRequest::with(['employee', 'swapWithEmployee'])
-            ->orderByDesc('created_at')
-            ->get();
+        return $this->renderAdminPanel($request, 'schedules');
+    }
 
-        $stats = [
-            'total_schedules' => OffDay::count(),
-            'pending_requests' => ScheduleSwapRequest::where('status', ScheduleSwapRequest::STATUS_PENDING)->count(),
-            'approved_requests' => ScheduleSwapRequest::where('status', ScheduleSwapRequest::STATUS_APPROVED)->count(),
-            'rejected_requests' => ScheduleSwapRequest::where('status', ScheduleSwapRequest::STATUS_REJECTED)->count(),
-        ];
-
-        $dayNames = OffDay::DAY_NAMES;
-
-        return view('admin.schedules', compact('employees', 'schedules', 'swapRequests', 'stats', 'dayNames'));
+    /**
+     * Attendance history page
+     */
+    public function history(Request $request)
+    {
+        return $this->renderAdminPanel($request, 'history');
     }
 
     /**
@@ -236,6 +220,11 @@ class AdminController extends Controller
             'employee_id' => 'required|exists:employees,employee_id',
             'day_of_week' => 'required|integer|min:0|max:6',
         ]);
+
+        $employee = Employee::where('employee_id', $request->employee_id)->first();
+        if (!$employee || !$this->canAccessEmployee($employee, $request)) {
+            abort(403, 'Akses ditolak untuk jadwal karyawan ini.');
+        }
 
         $schedule = OffDay::updateOrCreate(
             [
@@ -254,8 +243,12 @@ class AdminController extends Controller
     /**
      * Delete an off day schedule
      */
-    public function deleteWorkSchedule(OffDay $schedule)
+    public function deleteWorkSchedule(OffDay $schedule, Request $request)
     {
+        if (!$schedule->employee || !$this->canAccessEmployee($schedule->employee, $request)) {
+            abort(403, 'Akses ditolak untuk jadwal karyawan ini.');
+        }
+
         $schedule->delete();
 
         return response()->json([
@@ -267,8 +260,12 @@ class AdminController extends Controller
     /**
      * Approve swap request
      */
-    public function approveSwapRequest(ScheduleSwapRequest $swapRequest)
+    public function approveSwapRequest(ScheduleSwapRequest $swapRequest, Request $request)
     {
+        if (!$swapRequest->employee || !$this->canAccessEmployee($swapRequest->employee, $request)) {
+            abort(403, 'Akses ditolak untuk permintaan tukar jadwal ini.');
+        }
+
         $swapRequest->update([
             'status' => ScheduleSwapRequest::STATUS_APPROVED,
             'reviewed_by' => 'Admin',
@@ -285,8 +282,12 @@ class AdminController extends Controller
     /**
      * Reject swap request
      */
-    public function rejectSwapRequest(ScheduleSwapRequest $swapRequest)
+    public function rejectSwapRequest(ScheduleSwapRequest $swapRequest, Request $request)
     {
+        if (!$swapRequest->employee || !$this->canAccessEmployee($swapRequest->employee, $request)) {
+            abort(403, 'Akses ditolak untuk permintaan tukar jadwal ini.');
+        }
+
         $swapRequest->update([
             'status' => ScheduleSwapRequest::STATUS_REJECTED,
             'reviewed_by' => 'Admin',
@@ -338,6 +339,10 @@ class AdminController extends Controller
      */
     public function employeeDetail(Employee $employee, Request $request)
     {
+        if (!$this->canAccessEmployee($employee, $request)) {
+            abort(403, 'Akses ditolak untuk data karyawan ini.');
+        }
+
         $month = $request->get('month', now()->month);
         $year = $request->get('year', now()->year);
 
@@ -397,35 +402,137 @@ class AdminController extends Controller
 
     // ===== Private Helper Methods =====
 
-    private function getMonthlySummary($month, $year)
+    private function renderAdminPanel(Request $request, string $activePage = 'dashboard')
+    {
+        $month = $request->get('month', now()->month);
+        $year = $request->get('year', now()->year);
+
+        $summary = $this->getMonthlySummary($month, $year, $request);
+
+        $employees = Employee::withCount('attendances')
+            ->where('is_active', true);
+        $employees = $this->applyEmployeeScope($employees, $request)->get();
+        $employeeStats = $this->getEmployeeStats($employees, $month, $year);
+
+        $recentAttendances = Attendance::with('employee')
+            ->whereMonth('date', $month)
+            ->whereYear('date', $year)
+            ->whereHas('employee', function ($query) use ($request) {
+                $this->applyEmployeeScope($query, $request);
+            })
+            ->orderBy('created_at', 'desc')
+            ->limit(50)
+            ->get();
+
+        $todaySummary = $this->getTodaySummary($request);
+        $locations = OfficeLocation::all();
+
+        $pendingSwapRequests = ScheduleSwapRequest::with(['employee', 'swapWithEmployee'])
+            ->where('status', ScheduleSwapRequest::STATUS_PENDING)
+            ->whereHas('employee', function ($query) use ($request) {
+                $this->applyEmployeeScope($query, $request);
+            })
+            ->orderByDesc('created_at')
+            ->get();
+
+        $schedules = OffDay::with('employee')
+            ->whereHas('employee', function ($query) use ($request) {
+                $this->applyEmployeeScope($query, $request);
+            })
+            ->orderBy('employee_id')
+            ->orderBy('day_of_week')
+            ->get();
+
+        $swapRequests = ScheduleSwapRequest::with(['employee', 'swapWithEmployee'])
+            ->whereHas('employee', function ($query) use ($request) {
+                $this->applyEmployeeScope($query, $request);
+            })
+            ->orderByDesc('created_at')
+            ->get();
+
+        $stats = [
+            'total_schedules' => OffDay::whereHas('employee', function ($query) use ($request) {
+                $this->applyEmployeeScope($query, $request);
+            })->count(),
+            'pending_requests' => ScheduleSwapRequest::where('status', ScheduleSwapRequest::STATUS_PENDING)
+                ->whereHas('employee', function ($query) use ($request) {
+                    $this->applyEmployeeScope($query, $request);
+                })->count(),
+            'approved_requests' => ScheduleSwapRequest::where('status', ScheduleSwapRequest::STATUS_APPROVED)
+                ->whereHas('employee', function ($query) use ($request) {
+                    $this->applyEmployeeScope($query, $request);
+                })->count(),
+            'rejected_requests' => ScheduleSwapRequest::where('status', ScheduleSwapRequest::STATUS_REJECTED)
+                ->whereHas('employee', function ($query) use ($request) {
+                    $this->applyEmployeeScope($query, $request);
+                })->count(),
+        ];
+
+        $dayNames = OffDay::DAY_NAMES;
+
+        return view('admin.dashboard', compact(
+            'summary',
+            'employeeStats',
+            'recentAttendances',
+            'todaySummary',
+            'month',
+            'year',
+            'employees',
+            'locations',
+            'pendingSwapRequests',
+            'schedules',
+            'swapRequests',
+            'stats',
+            'dayNames',
+            'activePage'
+        ));
+    }
+
+    private function getMonthlySummary($month, $year, Request $request)
     {
         $totalIn = Attendance::whereMonth('date', $month)
             ->whereYear('date', $year)
             ->where('type', 'IN')
+            ->whereHas('employee', function ($query) use ($request) {
+                $this->applyEmployeeScope($query, $request);
+            })
             ->count();
 
         $totalOut = Attendance::whereMonth('date', $month)
             ->whereYear('date', $year)
             ->where('type', 'OUT')
+            ->whereHas('employee', function ($query) use ($request) {
+                $this->applyEmployeeScope($query, $request);
+            })
             ->count();
 
         $totalIzin = Attendance::whereMonth('date', $month)
             ->whereYear('date', $year)
             ->where('type', 'IZIN')
+            ->whereHas('employee', function ($query) use ($request) {
+                $this->applyEmployeeScope($query, $request);
+            })
             ->count();
 
         $totalSakit = Attendance::whereMonth('date', $month)
             ->whereYear('date', $year)
             ->where('type', 'SAKIT')
+            ->whereHas('employee', function ($query) use ($request) {
+                $this->applyEmployeeScope($query, $request);
+            })
             ->count();
 
         $totalTukarLibur = Attendance::whereMonth('date', $month)
             ->whereYear('date', $year)
             ->where('type', 'TUKAR_LIBUR')
+            ->whereHas('employee', function ($query) use ($request) {
+                $this->applyEmployeeScope($query, $request);
+            })
             ->count();
 
         // Calculate absent (working days without any attendance)
-        $totalEmployees = Employee::where('is_active', true)->count();
+        $totalEmployees = Employee::where('is_active', true);
+        $totalEmployees = $this->applyEmployeeScope($totalEmployees, $request)->count();
         $startDate = Carbon::create($year, $month, 1);
         $endDate = $startDate->copy()->endOfMonth();
         $today = Carbon::today();
@@ -446,6 +553,9 @@ class AdminController extends Controller
         $attendedDays = Attendance::whereMonth('date', $month)
             ->whereYear('date', $year)
             ->whereIn('type', ['IN', 'IZIN', 'SAKIT', 'TUKAR_LIBUR'])
+            ->whereHas('employee', function ($query) use ($request) {
+                $this->applyEmployeeScope($query, $request);
+            })
             ->select('employee_id', 'date')
             ->distinct()
             ->count();
@@ -508,27 +618,40 @@ class AdminController extends Controller
         });
     }
 
-    private function getTodaySummary()
+    private function getTodaySummary(Request $request)
     {
-        $totalEmployees = Employee::where('is_active', true)->count();
+        $totalEmployees = Employee::where('is_active', true);
+        $totalEmployees = $this->applyEmployeeScope($totalEmployees, $request)->count();
 
         $todayIn = Attendance::whereDate('date', today())
             ->where('type', 'IN')
+            ->whereHas('employee', function ($query) use ($request) {
+                $this->applyEmployeeScope($query, $request);
+            })
             ->distinct('employee_id')
             ->count('employee_id');
 
         $todayOut = Attendance::whereDate('date', today())
             ->where('type', 'OUT')
+            ->whereHas('employee', function ($query) use ($request) {
+                $this->applyEmployeeScope($query, $request);
+            })
             ->distinct('employee_id')
             ->count('employee_id');
 
         $todayIzin = Attendance::whereDate('date', today())
             ->where('type', 'IZIN')
+            ->whereHas('employee', function ($query) use ($request) {
+                $this->applyEmployeeScope($query, $request);
+            })
             ->distinct('employee_id')
             ->count('employee_id');
 
         $todaySakit = Attendance::whereDate('date', today())
             ->where('type', 'SAKIT')
+            ->whereHas('employee', function ($query) use ($request) {
+                $this->applyEmployeeScope($query, $request);
+            })
             ->distinct('employee_id')
             ->count('employee_id');
 
@@ -542,5 +665,38 @@ class AdminController extends Controller
             'sakit' => $todaySakit,
             'not_present' => max(0, $notPresent),
         ];
+    }
+
+    private function isCcAdmin(Request $request): bool
+    {
+        return $request->session()->get(self::SESSION_ADMIN_SCOPE, self::ADMIN_SCOPE_GENERAL) === self::ADMIN_SCOPE_CC;
+    }
+
+    private function canAccessEmployee(Employee $employee, Request $request): bool
+    {
+        $isCcDepartment = $this->isCcDepartment($employee->department);
+
+        if ($this->isCcAdmin($request)) {
+            return $isCcDepartment;
+        }
+
+        return !$isCcDepartment;
+    }
+
+    private function isCcDepartment(?string $department): bool
+    {
+        return strtoupper(trim((string) $department)) === 'CC';
+    }
+
+    private function applyEmployeeScope(Builder $query, Request $request): Builder
+    {
+        if ($this->isCcAdmin($request)) {
+            return $query->whereRaw('UPPER(TRIM(department)) = ?', ['CC']);
+        }
+
+        return $query->where(function ($q) {
+            $q->whereNull('department')
+                ->orWhereRaw('UPPER(TRIM(department)) <> ?', ['CC']);
+        });
     }
 }

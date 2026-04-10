@@ -10,6 +10,10 @@ class AdminPassword
     public function handle(Request $request, Closure $next)
     {
         if ($request->session()->get('admin_password_passed') === true) {
+            if (!$request->session()->has('admin_scope')) {
+                $request->session()->put('admin_scope', 'general');
+            }
+
             return $next($request);
         }
 

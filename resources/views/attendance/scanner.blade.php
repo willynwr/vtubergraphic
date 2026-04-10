@@ -1336,7 +1336,7 @@
                 scannerRunning = true;
             } catch (err) {
                 console.error('Camera error:', err);
-                alert('Tidak bisa mengakses kamera. Pastikan izin kamera sudah diberikan.');
+                showResult(false, 'Kamera Error', 'Tidak bisa mengakses kamera. Pastikan izin kamera sudah diberikan.');
                 closeCamera();
             }
         }

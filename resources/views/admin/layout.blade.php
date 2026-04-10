@@ -13,13 +13,44 @@
     </script>
     <style>
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-        @keyframes slideInRight { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
         .animate-blink { animation: blink 1.5s infinite; }
-        .animate-slide-in { animation: slideInRight 0.3s ease; }
         .scrollbar-thin { scrollbar-width: thin; scrollbar-color: rgba(219,160,190,0.2) transparent; }
         .scrollbar-thin::-webkit-scrollbar { width: 6px; }
         .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
         .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(219,160,190,0.2); border-radius: 3px; }
+
+        .admin-layout-modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(61, 43, 58, 0.42);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            z-index: 500; display: flex; align-items: center; justify-content: center;
+            padding: 20px; opacity: 0; pointer-events: none; transition: opacity 220ms ease;
+        }
+        .admin-layout-modal-overlay.show { opacity: 1; pointer-events: auto; }
+        .admin-layout-modal-card {
+            width: 100%; max-width: 400px; border-radius: 24px;
+            border: 1px solid rgba(255,255,255,0.6); background: rgba(255,255,255,0.94);
+            padding: 24px; box-shadow: 0 20px 60px rgba(61,43,58,0.22);
+            transform: translateY(10px) scale(0.96); opacity: 0;
+            transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease;
+        }
+        .admin-layout-modal-overlay.show .admin-layout-modal-card { transform: translateY(0) scale(1); opacity: 1; }
+        .admin-layout-modal-icon {
+            width: 48px; height: 48px; border-radius: 16px;
+            display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;
+        }
+        .admin-layout-modal-icon.icon-error { background: linear-gradient(135deg, #e87070, #b388d9); color: white; }
+        .admin-layout-modal-icon.icon-success { background: linear-gradient(135deg, #8dd4b0, #57b88b); color: white; }
+        .admin-layout-modal-icon.icon-confirm { background: linear-gradient(135deg, #e87bb0, #b388d9); color: white; }
+        .admin-layout-modal-icon svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .admin-layout-modal-title { font-size: 18px; font-weight: 800; text-align: center; color: #3d2b3a; margin-bottom: 6px; }
+        .admin-layout-modal-message { font-size: 13px; text-align: center; color: #8a6b80; line-height: 1.6; margin-bottom: 18px; }
+        .admin-layout-modal-actions { display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .admin-layout-modal-btn { flex: 1; padding: 12px; border-radius: 14px; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; text-align: center; }
+        .admin-layout-modal-btn.btn-cancel-modal { background: #fff7fb; border: 1px solid #ead9e4; color: #8a6b80; }
+        .admin-layout-modal-btn.btn-cancel-modal:hover { background: #ffeef7; }
+        .admin-layout-modal-btn.btn-primary-modal { background: linear-gradient(135deg, #e87bb0, #b388d9); border: none; color: white; font-weight: 700; }
+        .admin-layout-modal-btn.btn-primary-modal:hover { box-shadow: 0 8px 20px rgba(232, 123, 176, 0.3); }
     </style>
     @yield('head')
 </head>
@@ -72,13 +103,40 @@
         </main>
     </div>
 
-    {{-- Toast --}}
-    <div id="toast" class="fixed top-5 right-5 z-[300] hidden">
-        <div class="px-6 py-4 rounded-[14px] text-sm font-medium shadow-[0_10px_30px_rgba(180,120,160,0.15)] animate-slide-in" id="toastInner"></div>
+    <!-- Notice Modal (Success / Error) -->
+    <div class="admin-layout-modal-overlay" id="adminLayoutNoticeOverlay" onclick="if(event.target.id==='adminLayoutNoticeOverlay') closeAdminLayoutNotice()">
+        <div class="admin-layout-modal-card">
+            <div class="admin-layout-modal-icon" id="adminLayoutNoticeIcon">
+                <svg id="adminLayoutNoticeIconError" viewBox="0 0 24 24"><path d="M12 8v4"></path><path d="M12 16h.01"></path><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>
+                <svg id="adminLayoutNoticeIconSuccess" viewBox="0 0 24 24" style="display:none;"><path d="M20 6 9 17l-5-5"></path></svg>
+            </div>
+            <div class="admin-layout-modal-title" id="adminLayoutNoticeTitle">Error</div>
+            <div class="admin-layout-modal-message" id="adminLayoutNoticeMessage">-</div>
+            <div class="admin-layout-modal-actions">
+                <button class="admin-layout-modal-btn btn-primary-modal" onclick="closeAdminLayoutNotice()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div class="admin-layout-modal-overlay" id="adminLayoutConfirmOverlay" onclick="if(event.target.id==='adminLayoutConfirmOverlay') closeAdminLayoutConfirm()">
+        <div class="admin-layout-modal-card">
+            <div class="admin-layout-modal-icon icon-confirm">
+                <svg viewBox="0 0 24 24"><path d="M12 8v4"></path><path d="M12 16h.01"></path><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>
+            </div>
+            <div class="admin-layout-modal-title" id="adminLayoutConfirmTitle">Konfirmasi</div>
+            <div class="admin-layout-modal-message" id="adminLayoutConfirmMessage">Yakin?</div>
+            <div class="admin-layout-modal-actions">
+                <button class="admin-layout-modal-btn btn-cancel-modal" onclick="closeAdminLayoutConfirm()">Batal</button>
+                <button class="admin-layout-modal-btn btn-primary-modal" onclick="executeAdminLayoutConfirm()">Ya, lanjut</button>
+            </div>
+        </div>
     </div>
 
     <script>
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+        let adminLayoutNoticeShouldReload = false;
+        let pendingAdminLayoutConfirmAction = null;
 
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
@@ -88,14 +146,62 @@
             overlay.classList.toggle('hidden');
         }
 
-        function showToast(msg, type = 'success') {
-            const toast = document.getElementById('toast');
-            const inner = document.getElementById('toastInner');
-            inner.textContent = msg;
-            inner.className = `px-6 py-4 rounded-[14px] text-sm font-medium shadow-[0_10px_30px_rgba(180,120,160,0.15)] animate-slide-in ${type === 'success' ? 'bg-[#8dd4b026] border border-[#8dd4b04d] text-[#2f7c57]' : 'bg-[#e8707026] border border-[#e870704d] text-[#b54e4e]'}`;
-            toast.classList.remove('hidden');
-            setTimeout(() => toast.classList.add('hidden'), 4000);
+        function showNoticeModal(message, title = 'Error', variant = 'error', shouldReload = false) {
+            const titleEl = document.getElementById('adminLayoutNoticeTitle');
+            const messageEl = document.getElementById('adminLayoutNoticeMessage');
+            const iconWrap = document.getElementById('adminLayoutNoticeIcon');
+            const iconError = document.getElementById('adminLayoutNoticeIconError');
+            const iconSuccess = document.getElementById('adminLayoutNoticeIconSuccess');
+            if (titleEl) titleEl.textContent = title;
+            if (messageEl) messageEl.textContent = message;
+            adminLayoutNoticeShouldReload = shouldReload;
+            if (iconWrap && iconError && iconSuccess) {
+                if (variant === 'success') {
+                    iconWrap.className = 'admin-layout-modal-icon icon-success';
+                    iconError.style.display = 'none'; iconSuccess.style.display = '';
+                } else {
+                    iconWrap.className = 'admin-layout-modal-icon icon-error';
+                    iconSuccess.style.display = 'none'; iconError.style.display = '';
+                }
+            }
+            const overlay = document.getElementById('adminLayoutNoticeOverlay');
+            if (overlay) requestAnimationFrame(() => overlay.classList.add('show'));
         }
+
+        function closeAdminLayoutNotice() {
+            const overlay = document.getElementById('adminLayoutNoticeOverlay');
+            if (overlay) overlay.classList.remove('show');
+            if (adminLayoutNoticeShouldReload) { adminLayoutNoticeShouldReload = false; window.location.reload(); }
+        }
+
+        function showConfirmModal(title, message, onConfirm) {
+            document.getElementById('adminLayoutConfirmTitle').textContent = title;
+            document.getElementById('adminLayoutConfirmMessage').textContent = message;
+            pendingAdminLayoutConfirmAction = onConfirm;
+            const overlay = document.getElementById('adminLayoutConfirmOverlay');
+            if (overlay) requestAnimationFrame(() => overlay.classList.add('show'));
+        }
+
+        function closeAdminLayoutConfirm() {
+            const overlay = document.getElementById('adminLayoutConfirmOverlay');
+            if (overlay) overlay.classList.remove('show');
+            pendingAdminLayoutConfirmAction = null;
+        }
+
+        function executeAdminLayoutConfirm() {
+            const action = pendingAdminLayoutConfirmAction;
+            closeAdminLayoutConfirm();
+            if (typeof action === 'function') action();
+        }
+
+        // Backward compatibility alias
+        function showToast(msg, type = 'success') {
+            showNoticeModal(msg, type === 'success' ? 'Berhasil' : 'Gagal', type === 'success' ? 'success' : 'error');
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') { closeAdminLayoutNotice(); closeAdminLayoutConfirm(); }
+        });
     </script>
     @yield('scripts')
 </body>

@@ -2,6 +2,12 @@
 @section('title', 'Jadwal & Tukar Libur')
 
 @section('content')
+    @php
+        $groupedSchedules = ($schedules ?? collect())
+            ->filter(fn ($schedule) => $schedule->employee)
+            ->groupBy('employee_id');
+    @endphp
+
     {{-- Topbar --}}
     <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-7">
         <div>
@@ -43,41 +49,9 @@
         </div>
     </div>
 
-    {{-- Add Schedule + Schedule Table --}}
-    <div class="grid gap-5 xl:grid-cols-5 mb-7">
-        {{-- Add Form --}}
-        <section class="xl:col-span-2 bg-white/90 border border-[#dba0be33] rounded-[20px] overflow-hidden">
-            <div class="py-5 px-6 pb-4 border-b border-[#dba0be33]">
-                <h2 class="text-[15px] font-bold flex items-center gap-2">
-                    <span class="w-5 h-5 inline-flex items-center justify-center text-[#e87bb0]"><svg viewBox="0 0 24 24" class="w-[18px] h-[18px] stroke-current fill-none stroke-2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></span>
-                    Tambah Hari Libur
-                </h2>
-            </div>
-            <div class="p-6 space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-[#8a6b80] mb-2 uppercase tracking-wider">Karyawan</label>
-                    <select id="employeeId" class="w-full rounded-xl border border-[#dba0be33] bg-white px-4 py-3 text-sm text-[#3d2b3a] outline-none transition-all duration-200 focus:border-[#e87bb0] focus:shadow-[0_0_0_3px_rgba(232,123,176,0.1)]">
-                        <option value="">Pilih karyawan</option>
-                        @foreach($employees as $employee)
-                            <option value="{{ $employee->employee_id }}">{{ $employee->name }} — {{ $employee->department }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-[#8a6b80] mb-2 uppercase tracking-wider">Hari Libur</label>
-                    <select id="dayOfWeek" class="w-full rounded-xl border border-[#dba0be33] bg-white px-4 py-3 text-sm text-[#3d2b3a] outline-none transition-all duration-200 focus:border-[#e87bb0] focus:shadow-[0_0_0_3px_rgba(232,123,176,0.1)]">
-                        <option value="">Pilih hari</option>
-                        @foreach($dayNames as $num => $name)
-                            <option value="{{ $num }}">{{ $name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <button type="button" onclick="saveSchedule()" class="w-full rounded-xl bg-gradient-to-r from-[#e87bb0] to-[#b388d9] px-5 py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(232,123,176,0.22)]">Simpan Jadwal</button>
-            </div>
-        </section>
-
-        {{-- Schedule Table --}}
-        <section class="xl:col-span-3 bg-white/90 border border-[#dba0be33] rounded-[20px] overflow-hidden">
+    {{-- Schedule Table --}}
+    <div class="mb-7">
+        <section class="bg-white/90 border border-[#dba0be33] rounded-[20px] overflow-hidden">
             <div class="py-5 px-6 pb-4 border-b border-[#dba0be33]">
                 <h2 class="text-[15px] font-bold flex items-center gap-2">
                     <span class="w-5 h-5 inline-flex items-center justify-center text-[#b388d9]"><svg viewBox="0 0 24 24" class="w-[18px] h-[18px] stroke-current fill-none stroke-2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M3 10h18"></path></svg></span>
@@ -91,21 +65,36 @@
                             <th class="px-6 py-3 font-semibold">Karyawan</th>
                             <th class="px-6 py-3 font-semibold">Departemen</th>
                             <th class="px-6 py-3 font-semibold">Hari Libur</th>
-                            <th class="px-6 py-3 font-semibold">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-[#f1dce6] bg-white">
-                        @forelse($schedules as $schedule)
-                        <tr id="schedule-row-{{ $schedule->id }}" class="transition-colors hover:bg-[#fff5f9]">
-                            <td class="px-6 py-3 font-medium text-[#3d2b3a]">{{ $schedule->employee?->name ?? '-' }}</td>
-                            <td class="px-6 py-3 text-[#8a6b80]">{{ $schedule->employee?->department ?? '-' }}</td>
-                            <td class="px-6 py-3"><span class="rounded-full bg-[#e87bb01a] px-3 py-1 text-xs font-semibold text-[#e87bb0]">{{ $schedule->day_name }}</span></td>
+                        @forelse($groupedSchedules as $employeeSchedules)
+                        @php
+                            $firstSchedule = $employeeSchedules->first();
+                        @endphp
+                        <tr id="schedule-group-{{ $loop->index }}" class="transition-colors hover:bg-[#fff5f9]">
+                            <td class="px-6 py-3 font-medium text-[#3d2b3a]">{{ $firstSchedule->employee?->name ?? '-' }}</td>
+                            <td class="px-6 py-3 text-[#8a6b80]">{{ $firstSchedule->employee?->department ?? '-' }}</td>
                             <td class="px-6 py-3">
-                                <button type="button" onclick="deleteSchedule({{ $schedule->id }})" class="rounded-lg border border-[#e8707040] bg-[#e870701a] px-3 py-1.5 text-xs font-semibold text-[#b54e4e] transition hover:bg-[#e8707033]">Hapus</button>
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach($employeeSchedules as $schedule)
+                                        <select
+                                            class="rounded-lg border border-[#dba0be66] bg-white px-3 py-1.5 text-xs font-semibold text-[#8a6b80] outline-none transition focus:border-[#e87bb0]"
+                                            data-schedule-id="{{ $schedule->id }}"
+                                            data-employee-id="{{ $firstSchedule->employee_id }}"
+                                            data-original-day="{{ $schedule->day_of_week }}"
+                                            onchange="updateSingleScheduleDay(this)"
+                                        >
+                                            @foreach(\App\Models\OffDay::DAY_NAMES as $num => $name)
+                                                <option value="{{ $num }}" {{ (int) $schedule->day_of_week === (int) $num ? 'selected' : '' }}>{{ $name }}</option>
+                                            @endforeach
+                                        </select>
+                                    @endforeach
+                                </div>
                             </td>
                         </tr>
                         @empty
-                        <tr><td colspan="4" class="px-6 py-8 text-center text-[#8a6b80]">Belum ada jadwal libur.</td></tr>
+                        <tr><td colspan="3" class="px-6 py-8 text-center text-[#8a6b80]">Belum ada jadwal libur.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -177,37 +166,62 @@
 
 @section('scripts')
 <script>
-    async function saveSchedule() {
-        const payload = {
-            employee_id: document.getElementById('employeeId').value,
-            day_of_week: document.getElementById('dayOfWeek').value,
-        };
-        if (!payload.employee_id || payload.day_of_week === '') {
-            showToast('Karyawan dan hari libur wajib dipilih.', 'error'); return;
-        }
-        try {
-            const res = await fetch('{{ route("admin.schedules.store") }}', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-                body: JSON.stringify(payload),
-            });
-            const data = await res.json();
-            if (!res.ok) { showToast(data.message || 'Gagal.', 'error'); return; }
-            showToast('Jadwal berhasil disimpan!');
-            setTimeout(() => window.location.reload(), 1000);
-        } catch (err) { showToast('Gagal menyimpan.', 'error'); }
-    }
+    async function updateSingleScheduleDay(selectEl) {
+        const scheduleId = Number(selectEl.dataset.scheduleId);
+        const employeeId = selectEl.dataset.employeeId;
+        const newDay = Number(selectEl.value);
+        const oldDay = Number(selectEl.dataset.originalDay);
 
-    async function deleteSchedule(id) {
-        if (!confirm('Hapus jadwal libur ini?')) return;
+        if (!scheduleId || !employeeId) {
+            showToast('Data jadwal tidak valid.', 'error');
+            return;
+        }
+
+        if (newDay === oldDay) {
+            return;
+        }
+
+        const row = selectEl.closest('tr');
+        const allValues = Array.from(row.querySelectorAll('select[data-original-day]')).map((el) => Number(el.value));
+        if (new Set(allValues).size !== allValues.length) {
+            showToast('Hari libur tidak boleh duplikat.', 'error');
+            selectEl.value = String(oldDay);
+            return;
+        }
+
         try {
-            const res = await fetch(`/admin/schedules/${id}`, {
-                method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrfToken },
+            const addRes = await fetch('/admin/schedules', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                body: JSON.stringify({ employee_id: employeeId, day_of_week: newDay }),
             });
-            if (!res.ok) { showToast('Gagal menghapus.', 'error'); return; }
-            document.getElementById(`schedule-row-${id}`)?.remove();
-            showToast('Jadwal berhasil dihapus!');
-        } catch (err) { showToast('Gagal menghapus.', 'error'); }
+
+            if (!addRes.ok) {
+                showToast('Gagal menyimpan hari libur baru.', 'error');
+                selectEl.value = String(oldDay);
+                return;
+            }
+
+            const deleteRes = await fetch(`/admin/schedules/${scheduleId}`, {
+                method: 'DELETE',
+                headers: { 'X-CSRF-TOKEN': csrfToken },
+            });
+
+            if (!deleteRes.ok) {
+                showToast('Gagal mengganti hari libur lama.', 'error');
+                selectEl.value = String(oldDay);
+                return;
+            }
+
+            showToast('Hari libur berhasil diubah.');
+            setTimeout(() => window.location.reload(), 400);
+        } catch (err) {
+            showToast('Gagal memperbarui hari libur.', 'error');
+            selectEl.value = String(oldDay);
+        }
     }
 
     async function approveSwap(id) {

@@ -13,9 +13,29 @@
     </script>
     <style>
         @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-        @keyframes toastIn { from { opacity: 0; transform: translate(-50%, -20px); } to { opacity: 1; transform: translate(-50%, 0); } }
         .animate-sheet-up { animation: sheetUp 0.3s ease; }
-        .animate-toast { animation: toastIn 0.3s ease; }
+
+        .modal-overlay-generic {
+            background: rgba(61, 43, 58, 0.42);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 220ms ease;
+        }
+        .modal-overlay-generic.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-card-generic {
+            transform: translateY(10px) scale(0.96);
+            opacity: 0;
+            transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease;
+        }
+        .modal-overlay-generic.show .modal-card-generic {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="font-poppins bg-[#fef7ff] text-[#3d2b3a] min-h-screen pb-10">
@@ -149,8 +169,48 @@
         </div>
     </div>
 
+    {{-- Notice Modal (Success / Error) --}}
+    <div id="noticeModalOverlay" class="modal-overlay-generic fixed inset-0 z-[400] flex items-center justify-center p-5" onclick="if(event.target.id==='noticeModalOverlay') closeNoticeModal()">
+        <div class="modal-card-generic w-full max-w-sm rounded-[24px] border border-white/60 bg-white/[0.94] p-5 shadow-[0_20px_60px_rgba(61,43,58,0.22)]">
+            <div class="pb-2 text-center">
+                <div id="noticeIconWrap" class="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#e87070] to-[#b388d9] text-white flex items-center justify-center mx-auto mb-3">
+                    <svg id="noticeIconError" viewBox="0 0 24 24" class="w-6 h-6 stroke-current fill-none stroke-2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4"></path><path d="M12 16h.01"></path><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>
+                    <svg id="noticeIconSuccess" viewBox="0 0 24 24" class="hidden w-6 h-6 stroke-current fill-none stroke-2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+                </div>
+                <div class="text-[18px] font-extrabold text-[#3d2b3a]" id="noticeTitle">Error</div>
+            </div>
+            <div class="text-center py-2 mb-4">
+                <div class="text-[13px] text-[#7e6a79] leading-relaxed" id="noticeMessage">-</div>
+            </div>
+            <div class="flex items-center justify-center gap-2.5">
+                <button type="button" onclick="closeNoticeModal()" class="flex-1 py-3 rounded-[14px] border-none bg-gradient-to-r from-[#e87bb0] to-[#b388d9] text-[13px] font-bold text-white transition-all duration-300 hover:shadow-[0_8px_20px_rgba(232,123,176,0.3)]">OK</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Confirm Modal --}}
+    <div id="confirmModalOverlay" class="modal-overlay-generic fixed inset-0 z-[390] flex items-center justify-center p-5" onclick="if(event.target.id==='confirmModalOverlay') closeConfirmModal()">
+        <div class="modal-card-generic w-full max-w-sm rounded-[24px] border border-white/60 bg-white/[0.94] p-5 shadow-[0_20px_60px_rgba(61,43,58,0.22)]">
+            <div class="pb-2 text-center">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#e87bb0] to-[#b388d9] text-white flex items-center justify-center mx-auto mb-3">
+                    <svg viewBox="0 0 24 24" class="w-6 h-6 stroke-current fill-none stroke-2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4"></path><path d="M12 16h.01"></path><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>
+                </div>
+                <div class="text-[18px] font-extrabold text-[#3d2b3a]" id="confirmTitle">Konfirmasi</div>
+            </div>
+            <div class="text-center py-2 mb-4">
+                <div class="text-[13px] text-[#7e6a79] leading-relaxed" id="confirmMessage">Yakin?</div>
+            </div>
+            <div class="flex items-center justify-center gap-2.5">
+                <button type="button" onclick="closeConfirmModal()" class="flex-1 py-3 rounded-[14px] border border-[#ead9e4] bg-[#fff7fb] text-[13px] font-semibold text-[#7e6a79] transition-all duration-200 hover:bg-[#ffeef7]">Batal</button>
+                <button type="button" onclick="executeConfirmAction()" class="flex-[1.3] py-3 rounded-[14px] border-none bg-gradient-to-r from-[#e87bb0] to-[#b388d9] text-[13px] font-bold text-white transition-all duration-300 hover:shadow-[0_8px_20px_rgba(232,123,176,0.3)]">Ya, lanjut</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+        let noticeModalShouldReload = false;
+        let pendingConfirmAction = null;
 
         function openModal() {
             const modal = document.getElementById('swapModal');
@@ -163,15 +223,66 @@
             modal.classList.remove('flex');
         }
 
-        function showToast(msg, type = 'success') {
-            const t = document.createElement('div');
-            t.className = `fixed top-5 left-1/2 -translate-x-1/2 py-3.5 px-6 rounded-[14px] text-[13px] font-semibold z-[300] max-w-[90%] animate-toast ${type === 'success' ? 'bg-[#8dd4b0f2] text-[#1a4d35]' : 'bg-[#e87070f2] text-white'}`;
-            t.textContent = msg;
-            document.body.appendChild(t);
-            setTimeout(() => t.remove(), 4000);
+        // ======= Notice Modal (replaces toast) =======
+        function showNoticeModal(message, title = 'Error', variant = 'error', shouldReload = false) {
+            const titleEl = document.getElementById('noticeTitle');
+            const messageEl = document.getElementById('noticeMessage');
+            const iconWrap = document.getElementById('noticeIconWrap');
+            const iconError = document.getElementById('noticeIconError');
+            const iconSuccess = document.getElementById('noticeIconSuccess');
+
+            if (titleEl) titleEl.textContent = title;
+            if (messageEl) messageEl.textContent = message;
+            noticeModalShouldReload = shouldReload;
+
+            if (iconWrap && iconError && iconSuccess) {
+                if (variant === 'success') {
+                    iconWrap.className = 'w-12 h-12 rounded-2xl bg-gradient-to-br from-[#8dd4b0] to-[#57b88b] text-white flex items-center justify-center mx-auto mb-3';
+                    iconError.classList.add('hidden');
+                    iconSuccess.classList.remove('hidden');
+                } else {
+                    iconWrap.className = 'w-12 h-12 rounded-2xl bg-gradient-to-br from-[#e87070] to-[#b388d9] text-white flex items-center justify-center mx-auto mb-3';
+                    iconSuccess.classList.add('hidden');
+                    iconError.classList.remove('hidden');
+                }
+            }
+
+            const overlay = document.getElementById('noticeModalOverlay');
+            if (overlay) requestAnimationFrame(() => overlay.classList.add('show'));
         }
 
-        async function submitSwap() {
+        function closeNoticeModal() {
+            const overlay = document.getElementById('noticeModalOverlay');
+            if (overlay) overlay.classList.remove('show');
+            if (noticeModalShouldReload) {
+                noticeModalShouldReload = false;
+                window.location.reload();
+            }
+        }
+
+        // ======= Confirm Modal (replaces confirm()) =======
+        function showConfirmModal(title, message, onConfirm) {
+            document.getElementById('confirmTitle').textContent = title;
+            document.getElementById('confirmMessage').textContent = message;
+            pendingConfirmAction = onConfirm;
+            const overlay = document.getElementById('confirmModalOverlay');
+            if (overlay) requestAnimationFrame(() => overlay.classList.add('show'));
+        }
+
+        function closeConfirmModal() {
+            const overlay = document.getElementById('confirmModalOverlay');
+            if (overlay) overlay.classList.remove('show');
+            pendingConfirmAction = null;
+        }
+
+        function executeConfirmAction() {
+            const action = pendingConfirmAction;
+            closeConfirmModal();
+            if (typeof action === 'function') action();
+        }
+
+        // ======= Submit Swap =======
+        function submitSwap() {
             const payload = {
                 requested_date: document.getElementById('swapDate').value,
                 target_date: document.getElementById('swapTargetDate').value,
@@ -180,24 +291,41 @@
             };
 
             if (!payload.requested_date || !payload.target_date || !payload.swap_with_employee_id || !payload.reason) {
-                showToast('Semua field wajib diisi.', 'error');
+                showNoticeModal('Semua field wajib diisi.', 'Validasi Gagal');
                 return;
             }
 
-            try {
-                const res = await fetch('{{ route("portal.swap-requests.store") }}', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-                    body: JSON.stringify(payload),
-                });
-                const data = await res.json();
-                if (!res.ok) { showToast(data.message || 'Gagal.', 'error'); return; }
-                showToast('Request berhasil dikirim!', 'success');
-                setTimeout(() => window.location.reload(), 1500);
-            } catch (e) { showToast('Error, coba lagi.', 'error'); }
+            showConfirmModal(
+                'Konfirmasi Tukar Libur',
+                'Kirim permintaan tukar libur ini?',
+                async () => {
+                    try {
+                        const res = await fetch('{{ route("portal.swap-requests.store") }}', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                            body: JSON.stringify(payload),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) {
+                            showNoticeModal(data.message || 'Gagal mengirim request.', 'Gagal');
+                            return;
+                        }
+                        closeModal();
+                        showNoticeModal('Request tukar libur berhasil dikirim!', 'Berhasil', 'success', true);
+                    } catch (e) {
+                        showNoticeModal('Terjadi error, coba lagi.', 'Error');
+                    }
+                }
+            );
         }
 
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') {
+                closeModal();
+                closeNoticeModal();
+                closeConfirmModal();
+            }
+        });
         document.getElementById('swapModal').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
         });
