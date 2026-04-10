@@ -1,6 +1,13 @@
 <div class="page-section" id="page-schedules">
     <div class="topbar">
         <h1 class="topbar-title">Jadwal & Tukar Libur</h1>
+        <div class="topbar-right" style="display:flex;align-items:center;">
+            <div class="user-portal-clock">
+                <div class="user-portal-clock-time global-clock-time">--:--:--</div>
+                <div class="user-portal-clock-divider"></div>
+                <div class="user-portal-clock-date global-clock-date">Memuat...</div>
+            </div>
+        </div>
     </div>
 
     @php
@@ -47,6 +54,25 @@
                     <span>Daftar Jadwal Libur</span>
                 </div>
             </div>
+
+            {{-- Search & Filter --}}
+            <div class="table-toolbar">
+                <div class="table-search">
+                    <div class="table-search-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.35-4.35"></path></svg></div>
+                    <input type="text" id="schedSearchInput" placeholder="Cari nama karyawan..." oninput="filterScheduleTable()">
+                </div>
+                <div class="table-filter">
+                    <select id="schedFilterDept" onchange="filterScheduleTable()">
+                        <option value="">Semua Departemen</option>
+                        @php $schedDepts = ($schedules ?? collect())->map(fn($s) => $s->employee?->department)->filter()->unique()->sort(); @endphp
+                        @foreach($schedDepts as $dept)
+                            <option value="{{ $dept }}">{{ $dept }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <span class="table-result-count" id="schedResultCount">{{ $groupedSchedules->count() }} karyawan</span>
+            </div>
+
             <div class="card-body" style="padding:0;">
                 <div class="table-wrapper" style="max-height:350px;">
                     <table class="data-table">
@@ -58,21 +84,21 @@
                             </tr>
                         </thead>
                         <tbody id="scheduleTableBody">
-                            @forelse($groupedSchedules as $employeeSchedules)
+                            @forelse($employees as $emp)
                             @php
-                                $firstSchedule = $employeeSchedules->first();
+                                $empSchedules = ($schedules ?? collect())->filter(fn($s) => $s->employee_id == $emp->employee_id);
                             @endphp
-                            <tr id="sched-group-{{ $loop->index }}">
-                                <td>{{ $firstSchedule->employee?->name ?? '-' }}</td>
-                                <td>{{ $firstSchedule->employee?->department ?? '-' }}</td>
+                            <tr id="sched-emp-{{ $emp->id }}" data-search="{{ strtolower($emp->name) }}" data-dept="{{ $emp->department }}">
+                                <td>{{ $emp->name }}</td>
+                                <td>{{ $emp->department ?? '-' }}</td>
                                 <td>
-                                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                                        @foreach($employeeSchedules as $schedule)
+                                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                                        @foreach($empSchedules as $schedule)
                                             <select
                                                 class="schedule-day-select"
                                                 style="padding:6px 10px;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--text-primary);font-family:'Poppins';font-size:12px;"
                                                 data-schedule-id="{{ $schedule->id }}"
-                                                data-employee-id="{{ $firstSchedule->employee_id }}"
+                                                data-employee-id="{{ $schedule->employee_id }}"
                                                 data-original-day="{{ $schedule->day_of_week }}"
                                                 onchange="updateSingleScheduleDay(this)"
                                             >
@@ -81,11 +107,25 @@
                                                 @endforeach
                                             </select>
                                         @endforeach
+                                        
+                                        @if(count($empSchedules) < 2)
+                                            {{-- Dropdown Tambah Hari Libur Baru --}}
+                                            <select
+                                                class="schedule-day-add"
+                                                style="padding:6px 10px;border:1px dashed #dba0be;border-radius:10px;background:none;color:#e87bb0;font-family:'Poppins';font-size:12px;cursor:pointer;outline:none;"
+                                                onchange="addNewScheduleDay(this, '{{ $emp->employee_id }}')"
+                                            >
+                                                <option value="" disabled selected>+ Tambah</option>
+                                                @foreach(\App\Models\OffDay::DAY_NAMES as $num => $name)
+                                                    <option value="{{ $num }}">{{ $name }}</option>
+                                                @endforeach
+                                            </select>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>
                             @empty
-                            <tr><td colspan="3" style="text-align:center;padding:24px;">Belum ada jadwal.</td></tr>
+                            <tr><td colspan="3" style="text-align:center;padding:24px;">Belum ada karyawan.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -104,6 +144,24 @@
                 <span class="type-badge type-IZIN">{{ ($swapRequests ?? collect())->where('status','PENDING')->count() }} menunggu</span>
             @endif
         </div>
+
+        {{-- Search & Filter --}}
+        <div class="table-toolbar">
+            <div class="table-search">
+                <div class="table-search-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.35-4.35"></path></svg></div>
+                <input type="text" id="swapSearchInput" placeholder="Cari nama pengaju..." oninput="filterSwapTable()">
+            </div>
+            <div class="table-filter">
+                <select id="swapFilterStatus" onchange="filterSwapTable()">
+                    <option value="">Semua Status</option>
+                    <option value="PENDING">Pending</option>
+                    <option value="APPROVED">Disetujui</option>
+                    <option value="REJECTED">Ditolak</option>
+                </select>
+            </div>
+            <span class="table-result-count" id="swapResultCount"></span>
+        </div>
+
         <div class="card-body" style="padding:0;">
             <div class="table-wrapper" style="max-height:450px;">
                 <table class="data-table">
@@ -118,9 +176,9 @@
                             <th>Aksi</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="swapTableBody">
                         @forelse(($swapRequests ?? collect()) as $sw)
-                        <tr id="swap-sched-{{ $sw->id }}">
+                        <tr id="swap-sched-{{ $sw->id }}" data-search="{{ strtolower($sw->employee?->name ?? '') }}" data-status="{{ $sw->status }}">
                             <td>
                                 <div>{{ $sw->employee?->name ?? '-' }}</div>
                                 <small style="color:var(--text-muted);">{{ $sw->employee?->department ?? '-' }}</small>

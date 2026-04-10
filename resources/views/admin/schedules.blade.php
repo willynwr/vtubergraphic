@@ -1,6 +1,61 @@
 @extends('admin.layout')
 @section('title', 'Jadwal & Tukar Libur')
 
+@section('head')
+<style>
+    .sched-toolbar {
+        display: flex; align-items: center; gap: 10px; padding: 14px 24px; flex-wrap: wrap;
+    }
+    .sched-search {
+        width: 260px; margin-left: auto; position: relative;
+    }
+    .sched-search-icon {
+        position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+        width: 16px; height: 16px; color: #b8a0b0; pointer-events: none;
+    }
+    .sched-search-icon svg {
+        width: 16px; height: 16px; stroke: currentColor; fill: none;
+        stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    }
+    .sched-search input {
+        width: 100%; padding: 10px 14px 10px 40px;
+        border: 1px solid rgba(219,160,190,0.2); border-radius: 12px;
+        background: rgba(255,230,240,0.25); color: #3d2b3a;
+        font-size: 13px; font-family: 'Poppins', sans-serif; outline: none;
+        transition: all 0.3s;
+    }
+    .sched-search input:focus {
+        border-color: #e87bb0; box-shadow: 0 0 0 3px rgba(232,123,176,0.08);
+    }
+    .sched-search input::placeholder { color: #b8a0b0; }
+    .sched-filter select {
+        padding: 10px 32px 10px 14px; border: 1px solid rgba(219,160,190,0.2);
+        border-radius: 12px; background: rgba(255,230,240,0.25); color: #3d2b3a;
+        font-size: 12px; font-family: 'Poppins', sans-serif; font-weight: 500;
+        outline: none; cursor: pointer; transition: all 0.3s;
+        appearance: none; -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a6b80' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        background-repeat: no-repeat; background-position: right 12px center;
+    }
+    .sched-filter select:focus {
+        border-color: #e87bb0; box-shadow: 0 0 0 3px rgba(232,123,176,0.08);
+    }
+    .sched-result-count {
+        font-size: 11px; color: #b8a0b0; padding: 0 4px; white-space: nowrap;
+    }
+    .user-portal-clock {
+        display: inline-flex; align-items: center; gap: 14px; background: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(255, 255, 255, 0.8); border-radius: 18px; padding: 8px 16px;
+        color: #3d2b3a; box-shadow: 0 8px 24px rgba(61,43,58,0.12);
+        backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); height: 44px;
+    }
+    .user-portal-clock-time { font-size: 18px; font-weight: 800; color: #e87bb0; font-variant-numeric: tabular-nums; }
+    .user-portal-clock-divider { width: 1px; height: 24px; background: #ead9e4; }
+    .user-portal-clock-date { font-size: 11px; color: #7e6a79; font-weight: 500; }
+</style>
+@endsection
+
+
 @section('content')
     @php
         $groupedSchedules = ($schedules ?? collect())
@@ -14,6 +69,11 @@
             <p class="text-[10px] uppercase tracking-[3px] text-[#b8a0b0] mb-1">Manajemen</p>
             <h1 class="text-2xl md:text-[26px] font-extrabold">Jadwal Libur & Tukar Jadwal</h1>
             <p class="text-sm text-[#8a6b80] mt-1">Kelola hari libur mingguan karyawan dan proses permintaan tukar jadwal.</p>
+        </div>
+        <div class="user-portal-clock">
+            <div class="user-portal-clock-time global-clock-time">--:--:--</div>
+            <div class="user-portal-clock-divider"></div>
+            <div class="user-portal-clock-date global-clock-date">Memuat...</div>
         </div>
     </div>
 
@@ -58,6 +118,25 @@
                     Daftar Jadwal Libur Mingguan
                 </h2>
             </div>
+
+            {{-- Search & Filter --}}
+            <div class="sched-toolbar">
+                <div class="sched-search">
+                    <div class="sched-search-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.35-4.35"></path></svg></div>
+                    <input type="text" id="schedStandaloneSearch" placeholder="Cari nama karyawan..." oninput="filterStandaloneSchedule()">
+                </div>
+                <div class="sched-filter">
+                    <select id="schedStandaloneDept" onchange="filterStandaloneSchedule()">
+                        <option value="">Semua Departemen</option>
+                        @php $depts = ($schedules ?? collect())->map(fn($s) => $s->employee?->department)->filter()->unique()->sort(); @endphp
+                        @foreach($depts as $dept)
+                            <option value="{{ $dept }}">{{ $dept }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <span class="sched-result-count" id="schedStandaloneCount">{{ $groupedSchedules->count() }} karyawan</span>
+            </div>
+
             <div class="max-h-[420px] overflow-auto scrollbar-thin">
                 <table class="min-w-full text-left text-sm">
                     <thead class="sticky top-0 bg-[#fff5f9] text-xs uppercase tracking-wider text-[#8a6b80]">
@@ -67,21 +146,21 @@
                             <th class="px-6 py-3 font-semibold">Hari Libur</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-[#f1dce6] bg-white">
-                        @forelse($groupedSchedules as $employeeSchedules)
+                    <tbody id="schedStandaloneBody" class="divide-y divide-[#f1dce6] bg-white">
+                        @forelse($employees as $emp)
                         @php
-                            $firstSchedule = $employeeSchedules->first();
+                            $empSchedules = ($schedules ?? collect())->filter(fn($s) => $s->employee_id == $emp->employee_id);
                         @endphp
-                        <tr id="schedule-group-{{ $loop->index }}" class="transition-colors hover:bg-[#fff5f9]">
-                            <td class="px-6 py-3 font-medium text-[#3d2b3a]">{{ $firstSchedule->employee?->name ?? '-' }}</td>
-                            <td class="px-6 py-3 text-[#8a6b80]">{{ $firstSchedule->employee?->department ?? '-' }}</td>
+                        <tr id="schedule-emp-{{ $emp->id }}" class="transition-colors hover:bg-[#fff5f9]" data-search="{{ strtolower($emp->name) }}" data-dept="{{ $emp->department ?? '' }}">
+                            <td class="px-6 py-3 font-medium text-[#3d2b3a]">{{ $emp->name }}</td>
+                            <td class="px-6 py-3 text-[#8a6b80]">{{ $emp->department ?? '-' }}</td>
                             <td class="px-6 py-3">
-                                <div class="flex flex-wrap gap-2">
-                                    @foreach($employeeSchedules as $schedule)
+                                <div class="flex flex-wrap items-center gap-2">
+                                    @foreach($empSchedules as $schedule)
                                         <select
                                             class="rounded-lg border border-[#dba0be66] bg-white px-3 py-1.5 text-xs font-semibold text-[#8a6b80] outline-none transition focus:border-[#e87bb0]"
                                             data-schedule-id="{{ $schedule->id }}"
-                                            data-employee-id="{{ $firstSchedule->employee_id }}"
+                                            data-employee-id="{{ $schedule->employee_id }}"
                                             data-original-day="{{ $schedule->day_of_week }}"
                                             onchange="updateSingleScheduleDay(this)"
                                         >
@@ -90,11 +169,24 @@
                                             @endforeach
                                         </select>
                                     @endforeach
+                                    
+                                    @if(count($empSchedules) < 2)
+                                        {{-- Dropdown Tambah Hari Libur Baru --}}
+                                        <select
+                                            class="rounded-lg border border-dashed border-[#dba0be] bg-transparent px-3 py-1.5 text-xs font-semibold text-[#e87bb0] outline-none transition focus:border-[#e87bb0] cursor-pointer"
+                                            onchange="addNewScheduleDay(this, '{{ $emp->employee_id }}')"
+                                        >
+                                            <option value="" disabled selected>+ Tambah</option>
+                                            @foreach(\App\Models\OffDay::DAY_NAMES as $num => $name)
+                                                <option value="{{ $num }}">{{ $name }}</option>
+                                            @endforeach
+                                        </select>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
                         @empty
-                        <tr><td colspan="3" class="px-6 py-8 text-center text-[#8a6b80]">Belum ada jadwal libur.</td></tr>
+                        <tr><td colspan="3" class="px-6 py-8 text-center text-[#8a6b80]">Belum ada karyawan.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -113,6 +205,24 @@
                 <span class="px-3 py-1 rounded-full bg-[#f0b86e33] text-[#a86d2b] text-xs font-semibold">{{ $swapRequests->where('status', 'PENDING')->count() }} menunggu</span>
             @endif
         </div>
+
+        {{-- Search & Filter --}}
+        <div class="sched-toolbar">
+            <div class="sched-search">
+                <div class="sched-search-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.35-4.35"></path></svg></div>
+                <input type="text" id="swapStandaloneSearch" placeholder="Cari nama pengaju..." oninput="filterStandaloneSwap()">
+            </div>
+            <div class="sched-filter">
+                <select id="swapStandaloneStatus" onchange="filterStandaloneSwap()">
+                    <option value="">Semua Status</option>
+                    <option value="PENDING">Pending</option>
+                    <option value="APPROVED">Disetujui</option>
+                    <option value="REJECTED">Ditolak</option>
+                </select>
+            </div>
+            <span class="sched-result-count" id="swapStandaloneCount"></span>
+        </div>
+
         <div class="max-h-[500px] overflow-auto scrollbar-thin">
             <table class="min-w-full text-left text-sm">
                 <thead class="sticky top-0 bg-[#fff5f9] text-xs uppercase tracking-wider text-[#8a6b80]">
@@ -126,9 +236,9 @@
                         <th class="px-6 py-3 font-semibold">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-[#f1dce6] bg-white">
+                <tbody id="swapStandaloneBody" class="divide-y divide-[#f1dce6] bg-white">
                     @forelse($swapRequests as $swapRequest)
-                    <tr id="swap-row-{{ $swapRequest->id }}" class="transition-colors hover:bg-[#fff5f9]">
+                    <tr id="swap-row-{{ $swapRequest->id }}" class="transition-colors hover:bg-[#fff5f9]" data-search="{{ strtolower($swapRequest->employee?->name ?? '') }}" data-status="{{ $swapRequest->status }}">
                         <td class="px-6 py-3">
                             <div class="font-medium text-[#3d2b3a]">{{ $swapRequest->employee?->name ?? '-' }}</div>
                             <div class="text-[11px] text-[#b8a0b0]">{{ $swapRequest->employee?->department ?? '-' }}</div>
@@ -166,6 +276,62 @@
 
 @section('scripts')
 <script>
+    // Generic filter helper
+    function filterRows(tbodyId, searchId, filters, countId) {
+        const tbody = document.getElementById(tbodyId);
+        if (!tbody) return;
+        const searchVal = (document.getElementById(searchId)?.value || '').toLowerCase().trim();
+        const rows = tbody.querySelectorAll('tr[data-search]');
+        let visible = 0;
+        rows.forEach(row => {
+            const searchOk = !searchVal || row.dataset.search.includes(searchVal);
+            let filterOk = true;
+            for (const f of filters) {
+                const val = document.getElementById(f.selectId)?.value || '';
+                if (val && row.dataset[f.dataAttr] !== val) { filterOk = false; break; }
+            }
+            row.style.display = (searchOk && filterOk) ? '' : 'none';
+            if (searchOk && filterOk) visible++;
+        });
+        const el = document.getElementById(countId);
+        if (el) el.textContent = `${visible} dari ${rows.length} data`;
+    }
+
+    function filterStandaloneSchedule() {
+        filterRows('schedStandaloneBody', 'schedStandaloneSearch', [
+            { selectId: 'schedStandaloneDept', dataAttr: 'dept' }
+        ], 'schedStandaloneCount');
+    }
+
+    function filterStandaloneSwap() {
+        filterRows('swapStandaloneBody', 'swapStandaloneSearch', [
+            { selectId: 'swapStandaloneStatus', dataAttr: 'status' }
+        ], 'swapStandaloneCount');
+    }
+
+    async function addNewScheduleDay(selectEl, employeeId) {
+        const newDay = Number(selectEl.value);
+        if (isNaN(newDay)) return;
+        showConfirmModal('Tambah Hari Libur', 'Tambahkan hari libur ini?', async () => {
+            try {
+                const addRes = await fetch('/admin/schedules', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                    body: JSON.stringify({ employee_id: employeeId, day_of_week: newDay }),
+                });
+                if (!addRes.ok) {
+                    showNoticeModal('Gagal menambahkan hari libur baru.', 'Gagal');
+                    selectEl.value = '';
+                    return;
+                }
+                showNoticeModal('Hari libur baru berhasil ditambahkan.', 'Berhasil', 'success', true);
+            } catch (err) {
+                showNoticeModal('Gagal menambahkan hari libur.', 'Error');
+                selectEl.value = '';
+            }
+        });
+    }
+
     async function updateSingleScheduleDay(selectEl) {
         const scheduleId = Number(selectEl.dataset.scheduleId);
         const employeeId = selectEl.dataset.employeeId;
@@ -173,79 +339,75 @@
         const oldDay = Number(selectEl.dataset.originalDay);
 
         if (!scheduleId || !employeeId) {
-            showToast('Data jadwal tidak valid.', 'error');
+            showNoticeModal('Data jadwal tidak valid.', 'Validasi Gagal');
             return;
         }
 
-        if (newDay === oldDay) {
-            return;
-        }
+        if (newDay === oldDay) return;
 
         const row = selectEl.closest('tr');
         const allValues = Array.from(row.querySelectorAll('select[data-original-day]')).map((el) => Number(el.value));
         if (new Set(allValues).size !== allValues.length) {
-            showToast('Hari libur tidak boleh duplikat.', 'error');
+            showNoticeModal('Hari libur tidak boleh duplikat.', 'Validasi Gagal');
             selectEl.value = String(oldDay);
             return;
         }
 
-        try {
-            const addRes = await fetch('/admin/schedules', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                },
-                body: JSON.stringify({ employee_id: employeeId, day_of_week: newDay }),
-            });
+        showConfirmModal('Ubah Hari Libur', 'Yakin ingin mengubah hari libur karyawan ini?', async () => {
+            try {
+                const addRes = await fetch('/admin/schedules', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                    body: JSON.stringify({ employee_id: employeeId, day_of_week: newDay }),
+                });
 
-            if (!addRes.ok) {
-                showToast('Gagal menyimpan hari libur baru.', 'error');
+                if (!addRes.ok) {
+                    showNoticeModal('Gagal menyimpan hari libur baru.', 'Gagal');
+                    selectEl.value = String(oldDay);
+                    return;
+                }
+
+                const deleteRes = await fetch(`/admin/schedules/${scheduleId}`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': csrfToken },
+                });
+
+                if (!deleteRes.ok) {
+                    showNoticeModal('Gagal mengganti hari libur lama.', 'Gagal');
+                    selectEl.value = String(oldDay);
+                    return;
+                }
+
+                showNoticeModal('Hari libur berhasil diubah.', 'Berhasil', 'success', true);
+            } catch (err) {
+                showNoticeModal('Gagal memperbarui hari libur.', 'Error');
                 selectEl.value = String(oldDay);
-                return;
             }
-
-            const deleteRes = await fetch(`/admin/schedules/${scheduleId}`, {
-                method: 'DELETE',
-                headers: { 'X-CSRF-TOKEN': csrfToken },
-            });
-
-            if (!deleteRes.ok) {
-                showToast('Gagal mengganti hari libur lama.', 'error');
-                selectEl.value = String(oldDay);
-                return;
-            }
-
-            showToast('Hari libur berhasil diubah.');
-            setTimeout(() => window.location.reload(), 400);
-        } catch (err) {
-            showToast('Gagal memperbarui hari libur.', 'error');
-            selectEl.value = String(oldDay);
-        }
+        });
     }
 
     async function approveSwap(id) {
-        if (!confirm('Setujui permintaan tukar libur ini?')) return;
-        try {
-            const res = await fetch(`/admin/swap-requests/${id}/approve`, {
-                method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken },
-            });
-            if (!res.ok) { showToast('Gagal.', 'error'); return; }
-            showToast('Berhasil disetujui!');
-            setTimeout(() => window.location.reload(), 1000);
-        } catch (err) { showToast('Gagal.', 'error'); }
+        showConfirmModal('Setujui Tukar Libur', 'Setujui permintaan tukar libur ini?', async () => {
+            try {
+                const res = await fetch(`/admin/swap-requests/${id}/approve`, {
+                    method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken },
+                });
+                if (!res.ok) { showNoticeModal('Gagal menyetujui.', 'Gagal'); return; }
+                showNoticeModal('Request berhasil disetujui!', 'Berhasil', 'success', true);
+            } catch (err) { showNoticeModal('Gagal menyetujui.', 'Error'); }
+        });
     }
 
     async function rejectSwap(id) {
-        if (!confirm('Tolak permintaan tukar libur ini?')) return;
-        try {
-            const res = await fetch(`/admin/swap-requests/${id}/reject`, {
-                method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken },
-            });
-            if (!res.ok) { showToast('Gagal.', 'error'); return; }
-            showToast('Request ditolak.');
-            setTimeout(() => window.location.reload(), 1000);
-        } catch (err) { showToast('Gagal.', 'error'); }
+        showConfirmModal('Tolak Tukar Libur', 'Tolak permintaan tukar libur ini?', async () => {
+            try {
+                const res = await fetch(`/admin/swap-requests/${id}/reject`, {
+                    method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken },
+                });
+                if (!res.ok) { showNoticeModal('Gagal menolak.', 'Gagal'); return; }
+                showNoticeModal('Request berhasil ditolak.', 'Berhasil', 'success', true);
+            } catch (err) { showNoticeModal('Gagal menolak.', 'Error'); }
+        });
     }
 </script>
 @endsection

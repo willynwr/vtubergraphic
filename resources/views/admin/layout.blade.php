@@ -80,10 +80,7 @@
                 </a>
 
                 <div class="text-[10px] text-[#b8a0b0] uppercase tracking-[2px] px-3 mb-2.5 mt-6">Lainnya</div>
-                <a href="/" class="flex items-center gap-3 py-3 px-3.5 rounded-xl text-[#8a6b80] no-underline text-sm font-medium transition-all duration-200 cursor-pointer mb-1 hover:bg-[#ffe6f040] hover:text-[#3d2b3a]">
-                    <span class="w-6 h-6 inline-flex items-center justify-center"><svg viewBox="0 0 24 24" class="w-[18px] h-[18px] stroke-current fill-none stroke-2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h4l2-3h4l2 3h4v12H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg></span>
-                    Kembali ke Scanner
-                </a>
+
             </nav>
 
             <div class="pt-4 border-t border-[#dba0be33]">
@@ -202,6 +199,17 @@
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') { closeAdminLayoutNotice(); closeAdminLayoutConfirm(); }
         });
+
+        // Live Clock
+        function updateGlobalClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const dateStr = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+            document.querySelectorAll('.global-clock-time').forEach(el => el.textContent = timeStr);
+            document.querySelectorAll('.global-clock-date').forEach(el => el.textContent = dateStr);
+        }
+        setInterval(updateGlobalClock, 1000);
+        updateGlobalClock();
     </script>
     @yield('scripts')
 </body>
