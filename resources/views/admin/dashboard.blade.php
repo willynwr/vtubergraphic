@@ -1335,6 +1335,23 @@
                     </span>
                     Jadwal & Tukar Libur
                 </a>
+                <a class="nav-item" href="{{ route('admin.calendar') }}" id="nav-calendar">
+                    <span class="nav-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                            <path d="M8 14h.01"></path>
+                            <path d="M12 14h.01"></path>
+                            <path d="M16 14h.01"></path>
+                            <path d="M8 18h.01"></path>
+                            <path d="M12 18h.01"></path>
+                            <path d="M16 18h.01"></path>
+                        </svg>
+                    </span>
+                    Kalender
+                </a>
 
                 <div class="nav-label">Lainnya</div>
                 <a class="nav-item" href="{{ route('admin.history') }}" id="nav-history">
@@ -1377,6 +1394,7 @@
             @include('admin.dashboard.sections.employees')
             @include('admin.dashboard.sections.locations')
             @include('admin.dashboard.sections.schedules')
+            @include('admin.dashboard.sections.calendar')
             @include('admin.dashboard.sections.history')
         </main>
     </div>
@@ -1417,6 +1435,30 @@
             <div class="admin-modal-message" id="adminNoticeMessage">-</div>
             <div class="admin-modal-actions">
                 <button class="admin-modal-btn btn-primary-modal" onclick="closeAdminNotice()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approve Swap Modal -->
+    <div class="admin-modal-overlay" id="approveSwapModal" onclick="if(event.target.id==='approveSwapModal') closeApproveSwapModal()">
+        <div class="admin-modal-card" style="max-width: 400px; padding: 25px;">
+            <div class="admin-modal-icon icon-confirm">
+                <svg viewBox="0 0 24 24">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <path d="M22 4 12 14.01l-3-3"></path>
+                </svg>
+            </div>
+            <div class="admin-modal-title">Setujui Tukar Libur</div>
+            <div class="admin-modal-message">Pilih karyawan pengganti dari <b style="color:#e87bb0;">divisi yang sama</b>, dan pastikan karyawan pengganti sedang libur di <b id="lblTargetDateApprove" style="color:#e87bb0;">tanggal target</b>.</div>
+            <input type="hidden" id="approveSwapId" value="">
+            <div style="margin: 15px 0;">
+                <select id="approveSwapWithId" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #e0d0da; font-family: inherit; font-size: 14px; background: #faf5f8; color: #3d2b3a; outline: none; transition: border-color 0.2s;">
+                    <option value="">Pilih karyawan</option>
+                </select>
+            </div>
+            <div class="admin-modal-actions">
+                <button class="admin-modal-btn btn-cancel-modal" onclick="closeApproveSwapModal()">Batal</button>
+                <button class="admin-modal-btn btn-primary-modal" onclick="submitApproveSwap()">Setujui</button>
             </div>
         </div>
     </div>
@@ -1590,7 +1632,7 @@
 
         // Navigation
         function showPage(page) {
-            const allowedPages = ['dashboard', 'employees', 'locations', 'schedules', 'history'];
+            const allowedPages = ['dashboard', 'employees', 'locations', 'schedules', 'calendar', 'history'];
             if (!allowedPages.includes(page)) {
                 page = 'dashboard';
             }
@@ -1886,28 +1928,74 @@
         }
 
         // Swap request approval
-        async function approveSwap(id) {
-            showConfirmModal(
-                'Setujui Tukar Libur',
-                'Setujui permintaan tukar libur ini?',
-                async () => {
-                    try {
-                        const res = await fetch(`/admin/swap-requests/${id}/approve`, {
-                            method: 'POST',
-                            headers: { 'X-CSRF-TOKEN': csrfToken },
-                        });
-                        const data = await res.json();
-                        if (!res.ok) {
-                            showNoticeModal(data.message || 'Gagal menyetujui.', 'Gagal');
-                            return;
-                        }
-                        document.getElementById('swap-row-' + id)?.remove();
-                        showNoticeModal('Request berhasil disetujui!', 'Berhasil', 'success', true);
-                    } catch (err) {
-                        showNoticeModal('Error saat menyetujui.', 'Error');
-                    }
+        async function openApproveSwapModal(id, department, targetDateStr) {
+            document.getElementById('approveSwapId').value = id;
+            document.getElementById('lblTargetDateApprove').innerText = targetDateStr || 'tanggal target';
+            
+            const selectEl = document.getElementById('approveSwapWithId');
+            selectEl.innerHTML = '<option value="">Memuat data karyawan yang masuk kriteria...</option>';
+            document.getElementById('approveSwapModal').classList.add('show');
+            
+            try {
+                const res = await fetch(`/admin/swap-requests/${id}/eligible-employees`);
+                const json = await res.json();
+                
+                selectEl.innerHTML = '<option value="">Pilih karyawan</option>';
+                if (json.success && json.data.length > 0) {
+                    json.data.forEach(emp => {
+                        const opt = document.createElement('option');
+                        opt.value = emp.employee_id;
+                        opt.text = `${emp.name} — ${emp.position || '-'}`;
+                        selectEl.appendChild(opt);
+                    });
+                } else {
+                    selectEl.innerHTML = '<option value="">Tidak ada karyawan divisi yang sama sedang libur di hari tersebut</option>';
                 }
-            );
+            } catch (e) {
+                selectEl.innerHTML = '<option value="">Gagal memuat data karyawan</option>';
+            }
+        }
+
+        function closeApproveSwapModal() {
+            document.getElementById('approveSwapModal').classList.remove('show');
+            document.getElementById('approveSwapId').value = '';
+            document.getElementById('approveSwapWithId').value = '';
+        }
+
+        async function submitApproveSwap() {
+            const id = document.getElementById('approveSwapId').value;
+            const targetId = document.getElementById('approveSwapWithId').value;
+
+            if (!targetId) {
+                showNoticeModal('Harap pilih karyawan target (tukar dengan siapa).', 'Peringatan');
+                return;
+            }
+
+            try {
+                const res = await fetch(`/admin/swap-requests/${id}/approve`, {
+                    method: 'POST',
+                    headers: { 
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ swap_with_employee_id: targetId })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    showNoticeModal(data.message || 'Gagal menyetujui.', 'Gagal');
+                    return;
+                }
+                closeApproveSwapModal();
+                document.getElementById('swap-row-' + id)?.remove();
+                showNoticeModal('Request berhasil disetujui!', 'Berhasil', 'success', true);
+            } catch (err) {
+                showNoticeModal('Error saat menyetujui.', 'Error');
+            }
+        }
+
+        async function approveSwap(id, departmentStr, targetDateStr) {
+            // keep old function definition for compatibility if called directly, or just redirect
+            openApproveSwapModal(id, departmentStr, targetDateStr);
         }
 
         async function rejectSwap(id) {
@@ -2099,6 +2187,7 @@
                 closeAdminNotice();
                 closeAdminConfirm();
                 closeDetailModal();
+                closeApproveSwapModal();
             }
         });
 

@@ -80,6 +80,39 @@ class OffDay extends Model
             }
         }
 
+        // Apply approved swaps for this employee
+        // As the requester: gave up requested_date (work), took target_date (off)
+        $swapsAsRequester = ScheduleSwapRequest::where('employee_id', $employeeId)
+            ->where('status', 'APPROVED')
+            ->get();
+
+        foreach ($swapsAsRequester as $swap) {
+            $reqDate = Carbon::parse($swap->requested_date)->format('Y-m-d');
+            $tgtDate = Carbon::parse($swap->target_date)->format('Y-m-d');
+            
+            // gave up requested_date -> work
+            unset($offDates[$reqDate]);
+            
+            // took target_date -> off
+            $offDates[$tgtDate] = true;
+        }
+
+        // As the target: gave up target_date (work), took requested_date (off)
+        $swapsAsTarget = ScheduleSwapRequest::where('swap_with_employee_id', $employeeId)
+            ->where('status', 'APPROVED')
+            ->get();
+
+        foreach ($swapsAsTarget as $swap) {
+            $reqDate = Carbon::parse($swap->requested_date)->format('Y-m-d');
+            $tgtDate = Carbon::parse($swap->target_date)->format('Y-m-d');
+            
+            // gave up target_date -> work
+            unset($offDates[$tgtDate]);
+            
+            // took requested_date -> off
+            $offDates[$reqDate] = true;
+        }
+
         return array_keys($offDates);
     }
 
@@ -88,11 +121,45 @@ class OffDay extends Model
      */
     public static function isOffDay($employeeId, $date)
     {
-        $date = Carbon::parse($date);
+        $dateObj = Carbon::parse($date);
+        $dateStr = $dateObj->format('Y-m-d');
+
+        // Check if there's any approved swap that forces this day to ON or OFF
+        $swapsAsRequester = ScheduleSwapRequest::where('employee_id', $employeeId)
+            ->where('status', 'APPROVED')
+            ->where(function ($q) use ($dateStr) {
+                $q->whereDate('requested_date', $dateStr)
+                  ->orWhereDate('target_date', $dateStr);
+            })->get();
+
+        // If requester is taking target_date, it's an OFF day.
+        // If requester gave up requested_date, it's a WORK day.
+        foreach ($swapsAsRequester as $swap) {
+            $reqDateStr = Carbon::parse($swap->requested_date)->format('Y-m-d');
+            $tgtDateStr = Carbon::parse($swap->target_date)->format('Y-m-d');
+            if ($dateStr === $tgtDateStr) return true; // Off
+            if ($dateStr === $reqDateStr) return false; // Work
+        }
+
+        $swapsAsTarget = ScheduleSwapRequest::where('swap_with_employee_id', $employeeId)
+            ->where('status', 'APPROVED')
+            ->where(function ($q) use ($dateStr) {
+                $q->whereDate('requested_date', $dateStr)
+                  ->orWhereDate('target_date', $dateStr);
+            })->get();
+
+        // If target is taking requested_date, it's an OFF day.
+        // If target gave up target_date, it's a WORK day.
+        foreach ($swapsAsTarget as $swap) {
+            $reqDateStr = Carbon::parse($swap->requested_date)->format('Y-m-d');
+            $tgtDateStr = Carbon::parse($swap->target_date)->format('Y-m-d');
+            if ($dateStr === $reqDateStr) return true; // Off
+            if ($dateStr === $tgtDateStr) return false; // Work
+        }
 
         // Check override first
         $override = OffDayOverride::where('employee_id', $employeeId)
-            ->whereDate('override_date', $date)
+            ->whereDate('override_date', $dateObj)
             ->first();
 
         if ($override) {
@@ -101,7 +168,7 @@ class OffDay extends Model
 
         // Check weekly pattern
         $offDayNumbers = self::where('employee_id', $employeeId)->pluck('day_of_week')->toArray();
-        return in_array($date->dayOfWeek, $offDayNumbers);
+        return in_array($dateObj->dayOfWeek, $offDayNumbers);
     }
 
     /**

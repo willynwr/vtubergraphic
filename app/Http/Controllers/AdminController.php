@@ -204,6 +204,14 @@ class AdminController extends Controller
     }
 
     /**
+     * Calendar page
+     */
+    public function calendar(Request $request)
+    {
+        return $this->renderAdminPanel($request, 'calendar');
+    }
+
+    /**
      * Attendance history page
      */
     public function history(Request $request)
@@ -266,8 +274,34 @@ class AdminController extends Controller
             abort(403, 'Akses ditolak untuk permintaan tukar jadwal ini.');
         }
 
+        $request->validate([
+            'swap_with_employee_id' => 'required|exists:employees,employee_id',
+        ]);
+
+        $targetEmployee = \App\Models\Employee::where('employee_id', $request->swap_with_employee_id)->first();
+        if (!$targetEmployee || $targetEmployee->department !== $swapRequest->employee->department) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Karyawan target harus dari divisi yang sama.'
+            ], 422);
+        }
+
+        $targetDateCarbon = \Carbon\Carbon::parse($swapRequest->target_date);
+        $month = $targetDateCarbon->month;
+        $year = $targetDateCarbon->year;
+        
+        $targetOffDates = \App\Models\OffDay::getMonthlyOffDates($targetEmployee->employee_id, $month, $year);
+        $dateString = $targetDateCarbon->format('Y-m-d');
+        if (!in_array($dateString, $targetOffDates)) {
+            return response()->json([
+                'success' => false,
+                'message' => "Karyawan {$targetEmployee->name} tidak sedang libur pada tanggal target ({$dateString})."
+            ], 422);
+        }
+
         $swapRequest->update([
             'status' => ScheduleSwapRequest::STATUS_APPROVED,
+            'swap_with_employee_id' => $request->swap_with_employee_id,
             'reviewed_by' => 'Admin',
             'reviewed_at' => now(),
             'admin_note' => request('admin_note', $swapRequest->admin_note),
@@ -276,6 +310,43 @@ class AdminController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Permintaan tukar jadwal berhasil disetujui.',
+        ]);
+    }
+
+    /**
+     * Get eligible employees for a swap request.
+     */
+    public function eligibleSwapEmployees(ScheduleSwapRequest $swapRequest, Request $request)
+    {
+        if (!$swapRequest->employee || !$this->canAccessEmployee($swapRequest->employee, $request)) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $department = $swapRequest->employee->department;
+        $targetDateCarbon = \Carbon\Carbon::parse($swapRequest->target_date);
+        $month = $targetDateCarbon->month;
+        $year = $targetDateCarbon->year;
+        $dateString = $targetDateCarbon->format('Y-m-d');
+
+        $employees = \App\Models\Employee::where('department', $department)
+            ->where('employee_id', '!=', $swapRequest->employee_id)
+            ->get();
+
+        $eligible = [];
+        foreach ($employees as $emp) {
+            $offDates = \App\Models\OffDay::getMonthlyOffDates($emp->employee_id, $month, $year);
+            if (in_array($dateString, $offDates)) {
+                $eligible[] = [
+                    'employee_id' => $emp->employee_id,
+                    'name' => $emp->name,
+                    'position' => $emp->position,
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $eligible,
         ]);
     }
 
@@ -470,6 +541,18 @@ class AdminController extends Controller
 
         $dayNames = OffDay::DAY_NAMES;
 
+        $offDaysByEmployee = [];
+        foreach ($employees as $idx => $emp) {
+            $dates = OffDay::getMonthlyOffDates($emp->employee_id, $month, $year);
+            $offDaysByEmployee[$emp->employee_id] = [
+                'name' => $emp->name,
+                'department' => $emp->department,
+                'position' => $emp->position,
+                'off_day_names' => $emp->off_day_names,
+                'dates' => $dates,
+            ];
+        }
+
         return view('admin.dashboard', compact(
             'summary',
             'employeeStats',
@@ -484,7 +567,8 @@ class AdminController extends Controller
             'swapRequests',
             'stats',
             'dayNames',
-            'activePage'
+            'activePage',
+            'offDaysByEmployee'
         ));
     }
 

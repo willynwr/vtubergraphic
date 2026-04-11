@@ -112,13 +112,19 @@
                     <div class="flex items-center justify-between mb-2">
                         <span class="inline-flex items-center gap-1 py-[3px] px-2.5 rounded-lg text-[10px] font-semibold bg-[#f0b86e26] text-[#a86d2b]">Menunggu</span>
                     </div>
-                    <div class="flex items-center gap-2 text-sm mb-2">
+                    <div class="flex items-center gap-2 text-sm font-semibold mb-2">
                         <span class="py-1 px-2 bg-[#e870700f] rounded-lg text-xs font-semibold text-[#b54e4e]">{{ $req->requested_date?->format('d M') }}</span>
                         <svg viewBox="0 0 24 24" class="w-4 h-4 text-[#b8a0b0] stroke-current fill-none stroke-2 shrink-0" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
                         <span class="py-1 px-2 bg-[#8dd4b00f] rounded-lg text-xs font-semibold text-[#2f7c57]">{{ $req->target_date?->format('d M') ?? '-' }}</span>
                     </div>
-                    @if($req->swapWithEmployee)
-                        <div class="text-[11px] text-[#8a6b80]">↔ {{ $req->swapWithEmployee->name }}</div>
+                    @if($req->swapWithEmployee && $req->employee)
+                        <div class="flex items-center gap-1.5 text-[11px] text-[#8a6b80] mb-1">
+                            <span class="font-medium">{{ $req->employee->name }}</span>
+                            <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-[#b8a0b0] stroke-current fill-none stroke-[2.5]" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l4 4-4 4"></path><path d="M3 7h18"></path><path d="M7 21l-4-4 4-4"></path><path d="M21 17H3"></path></svg>
+                            <span class="font-medium">{{ $req->swapWithEmployee->name }}</span>
+                        </div>
+                    @elseif($req->employee)
+                        <div class="text-[11px] text-[#8a6b80] mb-1">Dari: {{ $req->employee->name }} (Menunggu Partner)</div>
                     @endif
                     <div class="text-xs text-[#b8a0b0] mt-1">{{ $req->reason }}</div>
                 </div>
@@ -140,13 +146,17 @@
                     <div class="flex items-center justify-between mb-2">
                         <span class="inline-flex items-center gap-1 py-[3px] px-2.5 rounded-lg text-[10px] font-semibold bg-[#8dd4b026] text-[#2f7c57]">Disetujui</span>
                     </div>
-                    <div class="flex items-center gap-2 text-sm mb-2">
+                    <div class="flex items-center gap-2 text-sm font-semibold mb-2">
                         <span class="py-1 px-2 bg-[#e870700f] rounded-lg text-xs font-semibold text-[#b54e4e]">{{ $req->requested_date?->format('d M') }}</span>
                         <svg viewBox="0 0 24 24" class="w-4 h-4 text-[#b8a0b0] stroke-current fill-none stroke-2 shrink-0" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
                         <span class="py-1 px-2 bg-[#8dd4b00f] rounded-lg text-xs font-semibold text-[#2f7c57]">{{ $req->target_date?->format('d M') ?? '-' }}</span>
                     </div>
-                    @if($req->swapWithEmployee)
-                        <div class="text-[11px] text-[#8a6b80]">↔ {{ $req->swapWithEmployee->name }}</div>
+                    @if($req->swapWithEmployee && $req->employee)
+                        <div class="flex items-center gap-1.5 text-[11px] text-[#8a6b80] mb-1">
+                            <span class="font-medium">{{ $req->employee->name }}</span>
+                            <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-[#b8a0b0] stroke-current fill-none stroke-[2.5]" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l4 4-4 4"></path><path d="M3 7h18"></path><path d="M7 21l-4-4 4-4"></path><path d="M21 17H3"></path></svg>
+                            <span class="font-medium">{{ $req->swapWithEmployee->name }}</span>
+                        </div>
                     @endif
                     <div class="text-xs text-[#b8a0b0] mt-1">{{ $req->reason }}</div>
                 </div>

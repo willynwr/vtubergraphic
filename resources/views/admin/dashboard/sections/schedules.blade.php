@@ -195,7 +195,7 @@
                             <td>
                                 @if($sw->status === 'PENDING')
                                 <div style="display:flex;gap:6px;">
-                                    <button class="btn-detail" type="button" onclick="approveSwap({{ $sw->id }})">✓</button>
+                                    <button class="btn-detail" type="button" onclick="approveSwap({{ $sw->id }}, '{{ $sw->employee->department ?? '' }}', '{{ \Carbon\Carbon::parse($sw->target_date)->format('Y-m-d') }}')">✓</button>
                                     <button class="btn-delete" type="button" onclick="rejectSwap({{ $sw->id }})">✕</button>
                                 </div>
                                 @else

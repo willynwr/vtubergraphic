@@ -89,21 +89,36 @@
         @if($swapRequests->count() > 0)
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
                 @foreach($swapRequests as $swap)
-                <div class="p-4 bg-white/[0.92] rounded-2xl transition-all duration-200 hover:shadow-[0_6px_20px_rgba(180,120,160,0.08)]">
+                <div class="p-4 bg-white/[0.92] rounded-2xl transition-all duration-200 hover:shadow-[0_6px_20px_rgba(180,120,160,0.08)] {{ $swap->employee_id !== $employee->employee_id ? 'border-2 border-[#e87bb0]' : '' }}">
                     <div class="flex items-center justify-between mb-2">
                         <span class="py-[3px] px-2.5 rounded-lg text-[10px] font-semibold
                             {{ $swap->status === 'APPROVED' ? 'bg-[#8dd4b026] text-[#2f7c57]' : ($swap->status === 'REJECTED' ? 'bg-[#e870701f] text-[#b54e4e]' : 'bg-[#f0b86e26] text-[#a86d2b]') }}">
                             {{ $swap->statusLabel() }}
                         </span>
+                        @if($swap->employee_id !== $employee->employee_id)
+                            <span class="text-[10px] text-[#e87bb0] font-bold">Request dari {{ $swap->employee->name }}</span>
+                        @endif
                     </div>
-                    <div class="flex items-center gap-2 text-sm font-semibold mb-2">
-                        <span class="py-1 px-2 bg-[#e870700f] rounded-lg text-xs text-[#b54e4e]">{{ $swap->requested_date?->format('d M') }}</span>
-                        <svg viewBox="0 0 24 24" class="w-4 h-4 text-[#b8a0b0] stroke-current fill-none stroke-2 shrink-0" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
-                        <span class="py-1 px-2 bg-[#8dd4b00f] rounded-lg text-xs text-[#2f7c57]">{{ $swap->target_date?->format('d M') ?? '-' }}</span>
-                    </div>
-                    @if($swap->swapWithEmployee)
-                        <div class="text-[11px] text-[#8a6b80] mb-1">↔ Tukar dengan <strong>{{ $swap->swapWithEmployee->name }}</strong></div>
+                    
+                    @if($swap->employee_id === $employee->employee_id)
+                        <div class="flex items-center gap-2 text-sm font-semibold mb-2">
+                            <span class="py-1 px-2 bg-[#e870700f] rounded-lg text-xs text-[#b54e4e]">{{ $swap->requested_date?->format('d M') }} (Kerja)</span>
+                            <svg viewBox="0 0 24 24" class="w-4 h-4 text-[#b8a0b0] stroke-current fill-none stroke-2 shrink-0" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+                            <span class="py-1 px-2 bg-[#8dd4b00f] rounded-lg text-xs text-[#2f7c57]">{{ $swap->target_date?->format('d M') ?? '-' }} (Libur)</span>
+                        </div>
+                        @if($swap->swapWithEmployee)
+                            <div class="text-[11px] text-[#8a6b80] mb-1">↔ Tukar Target: <strong>{{ $swap->swapWithEmployee->name }}</strong></div>
+                        @endif
+                    @else
+                        {{-- Karyawan ini adalah TARGET --}}
+                        <div class="flex items-center gap-2 text-sm font-semibold mb-2">
+                            <span class="py-1 px-2 bg-[#e870700f] rounded-lg text-xs text-[#b54e4e]">{{ $swap->target_date?->format('d M') ?? '-' }} (Kerja)</span>
+                            <svg viewBox="0 0 24 24" class="w-4 h-4 text-[#b8a0b0] stroke-current fill-none stroke-2 shrink-0" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+                            <span class="py-1 px-2 bg-[#8dd4b00f] rounded-lg text-xs text-[#2f7c57]">{{ $swap->requested_date?->format('d M') }} (Libur)</span>
+                        </div>
+                        <div class="text-[11px] text-[#8a6b80] mb-1"><strong>{{ $swap->employee->name }}</strong></div>
                     @endif
+
                     <div class="text-xs text-[#b8a0b0] mt-1">{{ $swap->reason }}</div>
                     @if($swap->admin_note)
                         <div class="mt-2 py-2 px-2.5 bg-[#ffe6f040] rounded-lg text-[11px] text-[#8a6b80]">
@@ -137,17 +152,6 @@
             <div class="mb-4">
                 <label class="block text-xs text-[#8a6b80] mb-1.5 font-medium">📅 Tanggal Libur Saya (yang ditukar)</label>
                 <input type="date" id="swapDate" class="w-full py-3.5 px-4 border-none rounded-[14px] bg-[#ffe6f040] text-[#3d2b3a] text-sm font-poppins outline-none transition-all duration-300 focus:shadow-[0_0_0_3px_rgba(232,123,176,0.12)]">
-            </div>
-
-            {{-- Swap with whom --}}
-            <div class="mb-4">
-                <label class="block text-xs text-[#8a6b80] mb-1.5 font-medium">👤 Tukar Dengan Karyawan</label>
-                <select id="swapWithEmployeeId" class="w-full py-3.5 px-4 pr-10 border-none rounded-[14px] bg-[#ffe6f040] text-[#3d2b3a] text-sm font-poppins outline-none cursor-pointer appearance-none transition-all duration-300 focus:shadow-[0_0_0_3px_rgba(232,123,176,0.12)]" style="background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a6b80' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 16px center;">
-                    <option value="">Pilih karyawan</option>
-                    @foreach($colleagues as $colleague)
-                        <option value="{{ $colleague->employee_id }}">{{ $colleague->name }} — {{ $colleague->position ?? '-' }}</option>
-                    @endforeach
-                </select>
             </div>
 
             {{-- Target date --}}
@@ -286,11 +290,10 @@
             const payload = {
                 requested_date: document.getElementById('swapDate').value,
                 target_date: document.getElementById('swapTargetDate').value,
-                swap_with_employee_id: document.getElementById('swapWithEmployeeId').value,
                 reason: document.getElementById('swapReason').value,
             };
 
-            if (!payload.requested_date || !payload.target_date || !payload.swap_with_employee_id || !payload.reason) {
+            if (!payload.requested_date || !payload.target_date || !payload.reason) {
                 showNoticeModal('Semua field wajib diisi.', 'Validasi Gagal');
                 return;
             }

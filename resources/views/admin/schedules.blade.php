@@ -387,15 +387,7 @@
     }
 
     async function approveSwap(id) {
-        showConfirmModal('Setujui Tukar Libur', 'Setujui permintaan tukar libur ini?', async () => {
-            try {
-                const res = await fetch(`/admin/swap-requests/${id}/approve`, {
-                    method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken },
-                });
-                if (!res.ok) { showNoticeModal('Gagal menyetujui.', 'Gagal'); return; }
-                showNoticeModal('Request berhasil disetujui!', 'Berhasil', 'success', true);
-            } catch (err) { showNoticeModal('Gagal menyetujui.', 'Error'); }
-        });
+        showConfirmModal('Setujui Tukar Libur', 'Tukar libur ini hanya bisa disetujui dari dashboard utama (karena butuh pilihan target). Harap approve dari dashboard.', () => {});
     }
 
     async function rejectSwap(id) {

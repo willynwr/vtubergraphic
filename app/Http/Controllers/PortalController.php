@@ -36,17 +36,25 @@ class PortalController extends Controller
         $totalOffDays = OffDay::totalThisMonth($employee->employee_id);
 
         // Swap request stats
-        $allSwaps = ScheduleSwapRequest::where('employee_id', $employee->employee_id)->get();
+        $allSwaps = ScheduleSwapRequest::where('employee_id', $employee->employee_id)
+            ->orWhere('swap_with_employee_id', $employee->employee_id)
+            ->get();
         $pendingSwaps = $allSwaps->where('status', 'PENDING')->count();
         $approvedSwaps = $allSwaps->where('status', 'APPROVED')->count();
 
-        $pendingRequests = ScheduleSwapRequest::with('swapWithEmployee')
-            ->where('employee_id', $employee->employee_id)
+        $pendingRequests = ScheduleSwapRequest::with(['swapWithEmployee', 'employee'])
+            ->where(function($q) use ($employee) {
+                $q->where('employee_id', $employee->employee_id)
+                  ->orWhere('swap_with_employee_id', $employee->employee_id);
+            })
             ->where('status', 'PENDING')
             ->latest()->get();
 
-        $approvedRequests = ScheduleSwapRequest::with('swapWithEmployee')
-            ->where('employee_id', $employee->employee_id)
+        $approvedRequests = ScheduleSwapRequest::with(['swapWithEmployee', 'employee'])
+            ->where(function($q) use ($employee) {
+                $q->where('employee_id', $employee->employee_id)
+                  ->orWhere('swap_with_employee_id', $employee->employee_id);
+            })
             ->where('status', 'APPROVED')
             ->latest()->limit(5)->get();
 
@@ -139,8 +147,11 @@ class PortalController extends Controller
         $employee = $this->getEmployee($request);
         if (!$employee) return redirect()->route('scanner');
 
-        $swapRequests = ScheduleSwapRequest::with('swapWithEmployee')
-            ->where('employee_id', $employee->employee_id)
+        $swapRequests = ScheduleSwapRequest::with(['swapWithEmployee', 'employee'])
+            ->where(function($q) use ($employee) {
+                $q->where('employee_id', $employee->employee_id)
+                  ->orWhere('swap_with_employee_id', $employee->employee_id);
+            })
             ->latest()->limit(20)->get();
 
         $colleagues = Employee::where('department', $employee->department)
@@ -164,26 +175,27 @@ class PortalController extends Controller
         $request->validate([
             'requested_date' => 'required|date',
             'target_date' => 'required|date',
-            'swap_with_employee_id' => 'required|exists:employees,employee_id',
             'reason' => 'required|string|max:1000',
         ]);
 
-        // Validate same department
-        $currentEmployee = Employee::where('employee_id', $employeeId)->first();
-        $targetEmployee = Employee::where('employee_id', $request->swap_with_employee_id)->first();
-
-        if ($currentEmployee && $targetEmployee && $currentEmployee->department !== $targetEmployee->department) {
+        if (!\App\Models\OffDay::isOffDay($employeeId, $request->requested_date)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Tukar libur hanya bisa dengan karyawan satu departemen.',
-            ], 422);
+                'message' => 'Tukar gagal: Anda tidak memiliki jadwal libur pada tanggal ' . \Carbon\Carbon::parse($request->requested_date)->format('d M') . '. Pilih tanggal libur Anda yang valid.'
+            ], 400); // Bad Request
+        }
+
+        if (\App\Models\OffDay::isOffDay($employeeId, $request->target_date)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tukar gagal: Anda sudah memiliki jadwal libur (atau tukar libur lain) pada tanggal ' . \Carbon\Carbon::parse($request->target_date)->format('d M') . '. Anda tidak bisa menukar libur ke hari libur lain.'
+            ], 400); // Bad Request
         }
 
         $swapRequest = ScheduleSwapRequest::create([
             'employee_id' => $employeeId,
             'requested_date' => $request->requested_date,
             'target_date' => $request->target_date,
-            'swap_with_employee_id' => $request->swap_with_employee_id,
             'reason' => $request->reason,
             'status' => ScheduleSwapRequest::STATUS_PENDING,
         ]);
