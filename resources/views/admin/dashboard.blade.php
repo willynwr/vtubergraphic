@@ -677,22 +677,28 @@
 
         /* Detail Modal */
         .detail-modal {
-            display: none;
+            display: flex;
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(61, 43, 58, 0.45);
-            backdrop-filter: blur(10px);
+            background: rgba(61, 43, 58, 0);
+            backdrop-filter: blur(0px);
             z-index: 200;
             justify-content: center;
             align-items: center;
             padding: 20px;
+            opacity: 0;
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), backdrop-filter 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
         }
 
         .detail-modal.active {
-            display: flex;
+            opacity: 1;
+            background: rgba(61, 43, 58, 0.5);
+            backdrop-filter: blur(10px);
+            pointer-events: auto;
         }
 
         .detail-modal-content {
@@ -705,79 +711,117 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            box-shadow: 0 20px 60px rgba(61, 43, 58, 0.15), 0 0 1px rgba(0, 0, 0, 0.1);
+            transform: scale(0.92) translateY(20px);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .detail-modal.active .detail-modal-content {
+            transform: scale(1) translateY(0);
+            box-shadow: 0 25px 70px rgba(61, 43, 58, 0.2), 0 0 1px rgba(0, 0, 0, 0.1);
         }
 
         .detail-modal-header {
-            padding: 24px;
+            padding: 28px 32px;
             border-bottom: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            background: linear-gradient(135deg, rgba(232, 123, 176, 0.04) 0%, rgba(232, 123, 176, 0.02) 100%);
         }
 
         .detail-modal-header h3 {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 700;
+            color: var(--text-primary);
+            margin: 0;
+            letter-spacing: -0.3px;
         }
 
         .btn-close-modal {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            background: transparent;
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            border: 1px solid rgba(232, 123, 176, 0);
+            background: rgba(232, 123, 176, 0.08);
             color: var(--text-secondary);
             font-size: 18px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.2s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            flex-shrink: 0;
         }
 
         .btn-close-modal:hover {
-            background: var(--bg-glass);
-            color: var(--text-primary);
+            background: rgba(232, 123, 176, 0.15);
+            border-color: rgba(232, 123, 176, 0.2);
+            color: var(--accent-pink);
+            transform: rotate(90deg);
         }
 
         .detail-modal-body {
-            padding: 24px;
+            padding: 32px;
             overflow-y: auto;
             flex: 1;
+            animation: slideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s backwards;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .detail-emp-info {
             display: flex;
             align-items: center;
-            gap: 16px;
-            margin-bottom: 24px;
-            padding: 16px;
-            background: var(--bg-glass);
+            gap: 20px;
+            margin-bottom: 32px;
+            padding: 24px;
+            background: linear-gradient(135deg, rgba(232, 123, 176, 0.08) 0%, rgba(232, 123, 176, 0.02) 100%);
             border-radius: 16px;
-            border: 1px solid var(--border);
+            border: 1px solid rgba(232, 123, 176, 0.15);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .detail-emp-info:hover {
+            border-color: rgba(232, 123, 176, 0.25);
+            background: linear-gradient(135deg, rgba(232, 123, 176, 0.12) 0%, rgba(232, 123, 176, 0.04) 100%);
         }
 
         .detail-emp-avatar {
-            width: 56px;
-            height: 56px;
+            width: 64px;
+            height: 64px;
             border-radius: 16px;
             background: var(--gradient-primary);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 22px;
+            font-size: 24px;
             font-weight: 800;
             color: white;
+            flex-shrink: 0;
+            box-shadow: 0 8px 20px rgba(232, 123, 176, 0.2);
         }
 
         .detail-emp-name {
             font-size: 18px;
             font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.2px;
         }
 
         .detail-emp-sub {
             font-size: 13px;
             color: var(--text-secondary);
+            margin-top: 2px;
         }
 
         /* Mobile burger */
@@ -1799,8 +1843,10 @@
                     html += `<p style="color:var(--text-muted);text-align:center;padding:40px;">Tidak ada data absensi untuk periode ini.</p>`;
                 }
 
-                document.getElementById('detailModalTitle').textContent = `Detail: ${emp.name}`;
+                document.getElementById('detailModalTitle').textContent = `Detail Karyawan`;
                 document.getElementById('detailModalBody').innerHTML = html;
+                // Trigger reflow to ensure animations work properly
+                void document.getElementById('detailModal').offsetWidth;
                 document.getElementById('detailModal').classList.add('active');
             } catch (err) {
                 showToast('Gagal memuat detail', 'error');
@@ -1939,17 +1985,15 @@
             try {
                 const res = await fetch(`/admin/swap-requests/${id}/eligible-employees`);
                 const json = await res.json();
-                
-                selectEl.innerHTML = '<option value="">Pilih karyawan</option>';
+
+                selectEl.innerHTML = '<option value="">Tanpa Tukar (Hanya Ubah Libur Sendiri)</option>';
                 if (json.success && json.data.length > 0) {
                     json.data.forEach(emp => {
                         const opt = document.createElement('option');
                         opt.value = emp.employee_id;
-                        opt.text = `${emp.name} — ${emp.position || '-'}`;
+                        opt.text = `Tukar Dengan: ${emp.name} — ${emp.position || '-'}`;
                         selectEl.appendChild(opt);
                     });
-                } else {
-                    selectEl.innerHTML = '<option value="">Tidak ada karyawan divisi yang sama sedang libur di hari tersebut</option>';
                 }
             } catch (e) {
                 selectEl.innerHTML = '<option value="">Gagal memuat data karyawan</option>';
@@ -1964,11 +2008,9 @@
 
         async function submitApproveSwap() {
             const id = document.getElementById('approveSwapId').value;
-            const targetId = document.getElementById('approveSwapWithId').value;
-
-            if (!targetId) {
-                showNoticeModal('Harap pilih karyawan target (tukar dengan siapa).', 'Peringatan');
-                return;
+            let targetId = document.getElementById('approveSwapWithId').value;
+            if (targetId === '') {
+                targetId = null;
             }
 
             try {

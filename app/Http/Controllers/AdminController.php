@@ -275,28 +275,30 @@ class AdminController extends Controller
         }
 
         $request->validate([
-            'swap_with_employee_id' => 'required|exists:employees,employee_id',
+            'swap_with_employee_id' => 'nullable|exists:employees,employee_id',
         ]);
 
-        $targetEmployee = \App\Models\Employee::where('employee_id', $request->swap_with_employee_id)->first();
-        if (!$targetEmployee || $targetEmployee->department !== $swapRequest->employee->department) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Karyawan target harus dari divisi yang sama.'
-            ], 422);
-        }
+        if ($request->filled('swap_with_employee_id')) {
+            $targetEmployee = \App\Models\Employee::where('employee_id', $request->swap_with_employee_id)->first();
+            if (!$targetEmployee || $targetEmployee->department !== $swapRequest->employee->department) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Karyawan target harus dari divisi yang sama.'
+                ], 422);
+            }
 
-        $targetDateCarbon = \Carbon\Carbon::parse($swapRequest->target_date);
-        $month = $targetDateCarbon->month;
-        $year = $targetDateCarbon->year;
-        
-        $targetOffDates = \App\Models\OffDay::getMonthlyOffDates($targetEmployee->employee_id, $month, $year);
-        $dateString = $targetDateCarbon->format('Y-m-d');
-        if (!in_array($dateString, $targetOffDates)) {
-            return response()->json([
-                'success' => false,
-                'message' => "Karyawan {$targetEmployee->name} tidak sedang libur pada tanggal target ({$dateString})."
-            ], 422);
+            $targetDateCarbon = \Carbon\Carbon::parse($swapRequest->target_date);
+            $month = $targetDateCarbon->month;
+            $year = $targetDateCarbon->year;
+            
+            $targetOffDates = \App\Models\OffDay::getMonthlyOffDates($targetEmployee->employee_id, $month, $year);
+            $dateString = $targetDateCarbon->format('Y-m-d');
+            if (!in_array($dateString, $targetOffDates)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Karyawan {$targetEmployee->name} tidak sedang libur pada tanggal target ({$dateString})."
+                ], 422);
+            }
         }
 
         $swapRequest->update([
