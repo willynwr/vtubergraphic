@@ -1132,7 +1132,7 @@
                 </div>
                 <div class="scanner-hint">
                     <div class="icon">📷</div>
-                    <div>Arahkan kamera ke QR Code karyawan</div>
+                    <div>Scan QR</div>
                     <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px; font-weight: 500;">
                         ⚠️ Pastikan Allow Permission Kamera & GPS sudah diaktifkan
                     </div>
