@@ -1,4 +1,4 @@
-<div class="page-section" id="page-employees">
+<div class="page-section {{ (isset($activePage) && $activePage === 'employees') ? 'active' : '' }}" id="page-employees" style="{{ (isset($activePage) && $activePage === 'employees') ? 'display:block;' : 'display:none;' }}">
     <div class="topbar">
         <h1 class="topbar-title">Kelola Karyawan</h1>
         <div class="topbar-right" style="display:flex;align-items:center;gap:12px;">

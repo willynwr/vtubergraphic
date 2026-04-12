@@ -1,4 +1,4 @@
-<div class="page-section" id="page-locations">
+<div class="page-section {{ (isset($activePage) && $activePage === 'locations') ? 'active' : '' }}" id="page-locations" style="{{ (isset($activePage) && $activePage === 'locations') ? 'display:block;' : 'display:none;' }}">
     <div class="topbar">
         <h1 class="topbar-title">Kelola Lokasi Kantor</h1>
         <div class="topbar-right" style="display:flex;align-items:center;">

@@ -6,7 +6,7 @@
     }
 </script>
 
-<div class="page-section" id="page-calendar">
+<div class="page-section {{ (isset($activePage) && $activePage === 'calendar') ? 'active' : '' }}" id="page-calendar" style="{{ (isset($activePage) && $activePage === 'calendar') ? 'display:block;' : 'display:none;' }}">
     <div class="flex items-center justify-between mb-5">
         <div>
             <h1 class="text-2xl font-bold mb-1">Kalender Kehadiran</h1>
@@ -81,7 +81,52 @@
             </div>
         </div>
     </div>
+
+    {{-- Rekap Absen Bulanan (Table) --}}
+    <div class="mt-8 grid grid-cols-1 w-full">
+        <div class="relative bg-white rounded-[18px] shadow-[0_2px_10px_rgba(219,160,190,0.06)] border border-[#ffe6f0] w-full" style="max-width: 100%; overflow: hidden;">
+            <div class="p-5 border-b border-[#ffe6f0] flex flex-col sm:flex-row sm:items-center justify-between bg-[#fdfafc] gap-4">
+                <h2 class="text-lg font-bold text-[#3d2b3a] flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-[#ffe6f0] flex items-center justify-center text-[#e87bb0]">
+                        <svg viewBox="0 0 24 24" class="w-5 h-5 stroke-current fill-none stroke-2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    </div>
+                    Rekap Kehadiran <span id="rekapBulanLabel" class="text-[#e87bb0]"></span>
+                </h2>
+                <div class="relative w-full sm:w-72 group">
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none transition-colors duration-300 group-focus-within:text-[#e87bb0] text-[#b8a0b0]">
+                        <svg viewBox="0 0 24 24" class="w-[18px] h-[18px] stroke-current fill-none stroke-2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+                    <input type="text" id="searchAttendance" placeholder="Cari nama karyawan..." onkeyup="renderAdminAttendanceTable()" 
+                           class="w-full pl-11 pr-5 py-2.5 text-[13px] font-medium bg-[#fff6fa] border-2 border-[#ffe6f0] rounded-full focus:outline-none focus:border-[#e87bb0] focus:bg-white focus:shadow-[0_0_0_4px_rgba(232,123,176,0.15)] transition-all duration-300 text-[#3d2b3a] placeholder-[#b8a0b0]">
+                </div>
+            </div>
+            <div class="w-full overflow-x-auto scrollbar-thin relative z-0">
+                <table class="text-left whitespace-nowrap border-separate border-spacing-0" style="min-width: max-content; width: 100%;">
+                    <thead>
+                    <tr id="tableHeaderDates" class="bg-[#fef7ff]">
+                        <!-- Dynamic dates -->
+                    </tr>
+                    <tr id="tableHeaderDays" class="bg-[#fef7ff]">
+                        <!-- Dynamic days -->
+                    </tr>
+                </thead>
+                <tbody id="adminAttendanceTableBody" class="text-[13px] text-[#3d2b3a] bg-white">
+                    <!-- Dynamic rows -->
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
+
+ </div>
+
+<style>
+    /* Styling scrollbar hanya untuk table rekap */
+    .scrollbar-thin::-webkit-scrollbar { height: 8px; }
+    .scrollbar-thin::-webkit-scrollbar-track { background: #fdfafc; border-radius: 8px; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #f0cce0; border-radius: 8px; }
+    .scrollbar-thin::-webkit-scrollbar-thumb:hover { background-color: #e87bb0; }
+</style>
 
 <script>
     const adminOffDaysData = @json($offDaysByEmployee ?? []);
@@ -112,7 +157,85 @@
         selectedDateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
         renderAdminCalendar();
         renderAdminEmployeeList();
+        renderAdminAttendanceTable();
     });
+
+    function renderAdminAttendanceTable() {
+        const daysInMonth = new Date(adminViewYear, adminViewMonth, 0).getDate();
+        const shortDays = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+        const pad0 = num => String(num).padStart(2, '0');
+
+        document.getElementById('rekapBulanLabel').textContent = `${adminMonthNames[adminViewMonth - 1]} ${adminViewYear}`;
+
+        // Top Row: No, Nama, Dates 1-30/31, Total Kehadiran
+        let headerDatesHtml = `
+            <th class="py-3 px-4 font-extrabold text-[#3d2b3a] border-b border-r border-[#ffe6f0] w-[50px] text-center bg-[#fdfafc] sticky left-0 z-30" rowspan="2">No</th>
+            <th class="py-3 px-4 font-extrabold text-[#3d2b3a] border-b border-[#ffe6f0] min-w-[220px] bg-[#fdfafc] sticky left-[50px] z-30 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.05)]" rowspan="2">Nama Karyawan</th>
+        `;
+        let headerDaysHtml = '';
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            headerDatesHtml += `<th class="px-2 py-2 font-bold text-[#e87bb0] border-b border-l border-[#ffe6f0] text-center min-w-[45px] bg-[#fff6fa]">${day}</th>`;
+            const d = new Date(adminViewYear, adminViewMonth - 1, day).getDay();
+            const isWeekend = d === 0 || d === 6;
+            const dayColor = isWeekend ? 'text-[#e74c3c]' : 'text-[#8a6b80]';
+            headerDaysHtml += `<th class="px-2 py-1.5 font-bold text-[10px] uppercase tracking-wider border-b border-l border-[#ffe6f0] text-center bg-[#fdfafc] ${dayColor}">${shortDays[d]}</th>`;
+        }
+
+        headerDatesHtml += `<th class="py-3 px-5 font-extrabold text-[#e87bb0] bg-[#fff0f6] border-b border-l border-[#ffe6f0] text-center sticky right-0 z-30 shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.05)] min-w-[130px]" rowspan="2">Total Hadir</th>`;
+        
+        document.getElementById('tableHeaderDates').innerHTML = headerDatesHtml;
+        document.getElementById('tableHeaderDays').innerHTML = headerDaysHtml;
+
+        let tbodyHtml = '';
+        
+        // Search & Filter
+        const searchInput = document.getElementById('searchAttendance');
+        const filterKeyword = searchInput ? searchInput.value.toLowerCase() : '';
+        
+        let filteredEmployees = [...employeeArray];
+        if (filterKeyword) {
+            filteredEmployees = filteredEmployees.filter(emp => emp.name.toLowerCase().includes(filterKeyword));
+        }
+        
+        const sortedEmployees = filteredEmployees.sort((a, b) => a.name.localeCompare(b.name));
+
+        if (sortedEmployees.length === 0) {
+            if (filterKeyword) {
+                tbodyHtml = `<tr><td colspan="${daysInMonth + 3}" class="p-8 text-center text-[#8a6b80]">Tidak ada data karyawan yang cocok dengan "${filterKeyword}"</td></tr>`;
+            } else {
+                tbodyHtml = `<tr><td colspan="${daysInMonth + 3}" class="p-8 text-center text-[#8a6b80]">Tidak ada data karyawan</td></tr>`;
+            }
+        } else {
+            sortedEmployees.forEach((emp, index) => {
+                let totalHadir = 0;
+                let bgRow = index % 2 === 0 ? 'bg-white' : 'bg-[#fcf9fb]';
+                
+                let rowHtml = `
+                    <tr class="hover:bg-[#fff0f6] ${bgRow} transition-colors group">
+                        <td class="p-3 text-center text-[13px] text-[#8a6b80] font-bold sticky left-0 z-20 ${bgRow} group-hover:bg-[#fff0f6] border-b border-r border-[#ffe6f0] transition-colors">${index + 1}</td>
+                        <td class="p-3 font-bold text-[#3d2b3a] whitespace-nowrap text-[13px] sticky left-[50px] z-20 ${bgRow} group-hover:bg-[#fff0f6] border-b border-[#ffe6f0] transition-colors shadow-[4px_0_8px_-2px_rgba(0,0,0,0.05)]">${emp.name}</td>
+                `;
+
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dateStr = `${adminViewYear}-${pad0(adminViewMonth)}-${pad0(day)}`;
+                    const isAttended = (emp.attendance_dates || []).includes(dateStr);
+                    
+                    if (isAttended) {
+                        totalHadir++;
+                        rowHtml += `<td class="p-2 border-b border-l border-[#ffe6f0] text-center"><span class="inline-flex items-center justify-center min-w-[32px] h-[24px] text-[11px] font-bold text-[#27ae60] bg-[#e8f8f0] border border-[#bce8d1] rounded-md leading-none shadow-sm">ON</span></td>`;
+                    } else {
+                        rowHtml += `<td class="p-2 border-b border-l border-[#ffe6f0] text-center"><span class="inline-flex items-center justify-center min-w-[32px] h-[24px] text-[11px] font-bold text-[#e74c3c] bg-[#fdf2f2] border border-[#facaca] rounded-md leading-none shadow-sm">OFF</span></td>`;
+                    }
+                }
+
+                rowHtml += `<td class="p-3 text-center font-extrabold text-[#e87bb0] text-[15px] bg-[#fff6fa] group-hover:bg-[#ffe6f0] sticky right-0 z-20 shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.05)] border-b border-l border-[#ffe6f0] transition-colors">${totalHadir}</td></tr>`;
+                tbodyHtml += rowHtml;
+            });
+        }
+
+        document.getElementById('adminAttendanceTableBody').innerHTML = tbodyHtml;
+    }
 
     function renderAdminCalendar() {
         document.getElementById('adminMonthLabel').textContent = `${adminMonthNames[adminViewMonth - 1]} ${adminViewYear}`;

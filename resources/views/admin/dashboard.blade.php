@@ -1337,7 +1337,7 @@
 
             <nav class="sidebar-nav">
                 <div class="nav-label">Menu</div>
-                <a class="nav-item" href="{{ route('admin.dashboard') }}" id="nav-dashboard">
+                <a class="nav-item {{ (!isset($activePage) || $activePage === 'dashboard') ? 'active' : '' }}" href="{{ route('admin.dashboard') }}" id="nav-dashboard">
                     <span class="nav-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24">
                             <path d="M4 20h16"></path>
@@ -1348,7 +1348,7 @@
                     </span>
                     Dashboard
                 </a>
-                <a class="nav-item" href="{{ route('admin.employees') }}" id="nav-employees">
+                <a class="nav-item {{ (isset($activePage) && $activePage === 'employees') ? 'active' : '' }}" href="{{ route('admin.employees') }}" id="nav-employees">
                     <span class="nav-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24">
                             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
@@ -1359,7 +1359,7 @@
                     </span>
                     Karyawan
                 </a>
-                <a class="nav-item" href="{{ route('admin.locations') }}" id="nav-locations">
+                <a class="nav-item {{ (isset($activePage) && $activePage === 'locations') ? 'active' : '' }}" href="{{ route('admin.locations') }}" id="nav-locations">
                     <span class="nav-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24">
                             <path d="M12 21s6-5.2 6-11a6 6 0 1 0-12 0c0 5.8 6 11 6 11z"></path>
@@ -1368,7 +1368,7 @@
                     </span>
                     Lokasi Kantor
                 </a>
-                <a class="nav-item" href="{{ route('admin.schedules') }}" id="nav-schedules">
+                <a class="nav-item {{ (isset($activePage) && $activePage === 'schedules') ? 'active' : '' }}" href="{{ route('admin.schedules') }}" id="nav-schedules">
                     <span class="nav-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24">
                             <path d="M8 2v4"></path>
@@ -1379,7 +1379,7 @@
                     </span>
                     Jadwal & Tukar Libur
                 </a>
-                <a class="nav-item" href="{{ route('admin.calendar') }}" id="nav-calendar">
+                <a class="nav-item {{ (isset($activePage) && $activePage === 'calendar') ? 'active' : '' }}" href="{{ route('admin.calendar') }}" id="nav-calendar">
                     <span class="nav-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24">
                             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -1398,7 +1398,7 @@
                 </a>
 
                 <div class="nav-label">Lainnya</div>
-                <a class="nav-item" href="{{ route('admin.history') }}" id="nav-history">
+                <a class="nav-item {{ (isset($activePage) && $activePage === 'history') ? 'active' : '' }}" href="{{ route('admin.history') }}" id="nav-history">
                     <span class="nav-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24">
                             <path d="M9 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-4"></path>
@@ -1681,17 +1681,48 @@
                 page = 'dashboard';
             }
 
-            document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
+            let pageEl = document.getElementById('page-' + page);
+            let navEl = document.getElementById('nav-' + page);
+
+            if (!pageEl || !navEl) {
+                page = 'dashboard';
+                pageEl = document.getElementById('page-dashboard');
+                navEl = document.getElementById('nav-dashboard');
+            }
+
+            if (!pageEl || !navEl) {
+                return;
+            }
+
+            document.querySelectorAll('.page-section').forEach(p => {
+                p.classList.remove('active');
+                p.style.display = 'none';
+            });
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            document.getElementById('page-' + page).classList.add('active');
-            document.getElementById('nav-' + page).classList.add('active');
+            pageEl.classList.add('active');
+            pageEl.style.display = 'block';
+            navEl.classList.add('active');
 
             // Close sidebar on mobile
             document.getElementById('sidebar').classList.remove('open');
             document.getElementById('sidebarOverlay').classList.remove('active');
         }
 
-        showPage(initialPage);
+        function getInitialPageFromPath() {
+            const path = (window.location.pathname || '').replace(/\/+$/, '');
+            const segment = path.split('/').pop();
+            const routeMap = {
+                'admin': 'dashboard',
+                'employees': 'employees',
+                'locations': 'locations',
+                'schedules': 'schedules',
+                'calendar': 'calendar',
+                'history': 'history'
+            };
+            return routeMap[segment] || null;
+        }
+
+        showPage(getInitialPageFromPath() || initialPage);
 
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('open');

@@ -1,4 +1,4 @@
-<div class="page-section" id="page-schedules">
+<div class="page-section {{ (isset($activePage) && $activePage === 'schedules') ? 'active' : '' }}" id="page-schedules" style="{{ (isset($activePage) && $activePage === 'schedules') ? 'display:block;' : 'display:none;' }}">
     <div class="topbar">
         <h1 class="topbar-title">Jadwal & Tukar Libur</h1>
         <div class="topbar-right" style="display:flex;align-items:center;">

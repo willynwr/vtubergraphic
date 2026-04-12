@@ -1,4 +1,4 @@
-<div class="page-section" id="page-history">
+<div class="page-section {{ (isset($activePage) && $activePage === 'history') ? 'active' : '' }}" id="page-history" style="{{ (isset($activePage) && $activePage === 'history') ? 'display:block;' : 'display:none;' }}">
     <div class="topbar">
         <h1 class="topbar-title">Riwayat Absensi Lengkap</h1>
         <div class="topbar-right" style="display:flex;align-items:center;">

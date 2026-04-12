@@ -1,4 +1,4 @@
-<div class="page-section active" id="page-dashboard">
+<div class="page-section {{ (!isset($activePage) || $activePage === 'dashboard') ? 'active' : '' }}" id="page-dashboard" style="{{ (!isset($activePage) || $activePage === 'dashboard') ? 'display:block;' : 'display:none;' }}">
     <div class="topbar">
         <h1 class="topbar-title">Dashboard</h1>
         <div class="topbar-right">

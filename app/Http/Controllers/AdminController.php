@@ -546,12 +546,34 @@ class AdminController extends Controller
         $offDaysByEmployee = [];
         foreach ($employees as $idx => $emp) {
             $dates = OffDay::getMonthlyOffDates($emp->employee_id, $month, $year);
+            
+            // Dapatkan absensi IN dan OUT bulan ini untuk employee
+            $monthlyAttendances = Attendance::where('employee_id', $emp->employee_id)
+                ->whereMonth('date', $month)
+                ->whereYear('date', $year)
+                ->whereIn('type', ['IN', 'OUT'])
+                ->get();
+
+            // Kumpulkan tanggal yang memiliki record IN
+            $inDates = $monthlyAttendances->where('type', 'IN')->map(function($att) {
+                return \Carbon\Carbon::parse($att->date)->format('Y-m-d');
+            })->unique()->toArray();
+
+            // Kumpulkan tanggal yang memiliki record OUT
+            $outDates = $monthlyAttendances->where('type', 'OUT')->map(function($att) {
+                return \Carbon\Carbon::parse($att->date)->format('Y-m-d');
+            })->unique()->toArray();
+
+            // Hadir/ON berarti dia memiliki IN dan OUT pada hari tersebut
+            $attendanceDates = array_values(array_intersect($inDates, $outDates));
+
             $offDaysByEmployee[$emp->employee_id] = [
                 'name' => $emp->name,
                 'department' => $emp->department,
                 'position' => $emp->position,
                 'off_day_names' => $emp->off_day_names,
                 'dates' => $dates,
+                'attendance_dates' => $attendanceDates,
             ];
         }
 
