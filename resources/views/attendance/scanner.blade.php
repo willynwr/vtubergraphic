@@ -1179,12 +1179,12 @@
         </div>
 
         <!-- Admin Link -->
-        <div class="admin-link">
+        <!-- <div class="admin-link">
             <a href="/admin">
                 <span>⚙️</span>
                 Admin Dashboard
             </a>
-        </div>
+        </div> -->
     </div>
 
     <!-- Action Modal -->

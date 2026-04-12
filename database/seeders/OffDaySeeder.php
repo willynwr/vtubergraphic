@@ -15,7 +15,7 @@ class OffDaySeeder extends Seeder
             // RIGGER
             'VTG-001' => [5, 6],    // Yohan → Jumat, Sabtu
             'VTG-002' => [2, 3],    // Lina → Selasa, Rabu
-            'VTG-003' => [2, 3],    // Reza → Selasa, Rabu
+            'VTG-003' => [1, 2],    // Reza → Selasa, Rabu
             'VTG-004' => [3, 4],    // Ragil → Rabu, Kamis
 
             // PNG TUBER

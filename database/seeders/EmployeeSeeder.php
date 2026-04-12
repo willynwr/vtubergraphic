@@ -24,10 +24,10 @@ class EmployeeSeeder extends Seeder
             ['employee_id' => 'VTG-007', 'name' => 'Bunga', 'department' => 'SOCMED', 'position' => 'Staff'],
 
             // PNGTUBER / RIGGER
-            ['employee_id' => 'VTG-008', 'name' => 'Septian', 'department' => 'PNGTUBER / RIGGER', 'position' => 'Staff'],
+            ['employee_id' => 'VTG-008', 'name' => 'Septian', 'department' => 'RIGGER', 'position' => 'Staff'],
 
             // PNG TUBER / CC
-            ['employee_id' => 'VTG-009', 'name' => 'Trian', 'department' => 'PNG TUBER / CC', 'position' => 'Staff'],
+            ['employee_id' => 'VTG-009', 'name' => 'Trian', 'department' => 'PNG TUBER', 'position' => 'Staff'],
 
             // CC
             ['employee_id' => 'VTG-010', 'name' => 'Yenni', 'department' => 'CC', 'position' => 'Staff'],
