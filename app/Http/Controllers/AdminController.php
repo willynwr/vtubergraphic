@@ -13,7 +13,7 @@ use Carbon\Carbon;
 
 class AdminController extends Controller
 {
-    private const ADMIN_GENERAL_PASSWORD = 'pshtjaya';
+    private const ADMIN_GENERAL_PASSWORD = 'office';
     private const ADMIN_CC_PASSWORD = 'capcutcapcut';
     private const ADMIN_SCOPE_GENERAL = 'general';
     private const ADMIN_SCOPE_CC = 'cc';
