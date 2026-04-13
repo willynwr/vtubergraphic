@@ -150,13 +150,13 @@
 
             {{-- My off day date --}}
             <div class="mb-4">
-                <label class="block text-xs text-[#8a6b80] mb-1.5 font-medium">📅 Tanggal Libur Saya (yang ditukar)</label>
+                <label class="block text-xs text-[#8a6b80] mb-1.5 font-medium">📅 Tanggal Libur Saya</label>
                 <input type="date" id="swapDate" class="w-full py-3.5 px-4 border-none rounded-[14px] bg-[#ffe6f040] text-[#3d2b3a] text-sm font-poppins outline-none transition-all duration-300 focus:shadow-[0_0_0_3px_rgba(232,123,176,0.12)]">
             </div>
 
             {{-- Target date --}}
             <div class="mb-4">
-                <label class="block text-xs text-[#8a6b80] mb-1.5 font-medium">🎯 Tanggal Kerja Target (tanggal saya ingin masuk)</label>
+                <label class="block text-xs text-[#8a6b80] mb-1.5 font-medium">🎯 Tanggal Libur Target</label>
                 <input type="date" id="swapTargetDate" class="w-full py-3.5 px-4 border-none rounded-[14px] bg-[#ffe6f040] text-[#3d2b3a] text-sm font-poppins outline-none transition-all duration-300 focus:shadow-[0_0_0_3px_rgba(232,123,176,0.12)]">
             </div>
 

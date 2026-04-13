@@ -17,6 +17,13 @@ class AdminPassword
             return $next($request);
         }
 
+        if ($request->expectsJson() || $request->ajax() || $request->is('admin/api/*')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sesi admin berakhir. Silakan login ulang.'
+            ], 401);
+        }
+
         return redirect()->route('admin.password.form');
     }
 }

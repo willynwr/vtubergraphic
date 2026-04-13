@@ -278,6 +278,34 @@ class AdminController extends Controller
             'swap_with_employee_id' => 'nullable|exists:employees,employee_id',
         ]);
 
+        if (!$request->filled('swap_with_employee_id')) {
+            $department = $swapRequest->employee->department;
+            $targetDateCarbon = \Carbon\Carbon::parse($swapRequest->target_date);
+            $month = $targetDateCarbon->month;
+            $year = $targetDateCarbon->year;
+            $dateString = $targetDateCarbon->format('Y-m-d');
+
+            $departmentEmployees = \App\Models\Employee::where('department', $department)
+                ->where('employee_id', '!=', $swapRequest->employee_id)
+                ->get();
+
+            $hasEligibleEmployee = false;
+            foreach ($departmentEmployees as $departmentEmployee) {
+                $offDates = \App\Models\OffDay::getMonthlyOffDates($departmentEmployee->employee_id, $month, $year);
+                if (in_array($dateString, $offDates)) {
+                    $hasEligibleEmployee = true;
+                    break;
+                }
+            }
+
+            if ($hasEligibleEmployee) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Karyawan pengganti wajib dipilih karena ada karyawan sedivisi yang libur pada tanggal target.'
+                ], 422);
+            }
+        }
+
         if ($request->filled('swap_with_employee_id')) {
             $targetEmployee = \App\Models\Employee::where('employee_id', $request->swap_with_employee_id)->first();
             if (!$targetEmployee || $targetEmployee->department !== $swapRequest->employee->department) {

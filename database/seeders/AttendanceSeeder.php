@@ -15,7 +15,8 @@ class AttendanceSeeder extends Seeder
     {
         $employees = Employee::all();
         $office = OfficeLocation::first();
-        $startOfMonth = Carbon::now()->startOfMonth();
+        $monthsBack = 3; // Current month + 3 previous months
+        $startDate = Carbon::now()->subMonths($monthsBack)->startOfMonth();
         $today = Carbon::today();
 
         foreach ($employees as $employee) {
@@ -24,7 +25,7 @@ class AttendanceSeeder extends Seeder
                 ->pluck('day_of_week')
                 ->toArray();
 
-            $current = $startOfMonth->copy();
+            $current = $startDate->copy();
 
             while ($current->lt($today)) {
                 $isOffDay = in_array($current->dayOfWeek, $offDayNumbers);

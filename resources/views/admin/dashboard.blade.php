@@ -1610,17 +1610,44 @@
             const month = document.getElementById('selectMonth').value;
             const year = document.getElementById('selectYear').value;
 
+            const setText = (id, value) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = value;
+            };
+
             try {
-                const res = await fetch(`/admin/api/summary?month=${month}&year=${year}`);
-                const data = await res.json();
+                const res = await fetch(`/admin/api/summary?month=${month}&year=${year}`, {
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const contentType = (res.headers.get('content-type') || '').toLowerCase();
+                const data = contentType.includes('application/json') ? await res.json() : null;
+
+                if (!res.ok) {
+                    if (res.status === 401) {
+                        showNoticeModal('Sesi admin berakhir. Silakan login ulang.', 'Sesi Berakhir');
+                        setTimeout(() => {
+                            window.location.href = '{{ route("admin.password.form") }}';
+                        }, 800);
+                        return;
+                    }
+
+                    throw new Error((data && data.message) ? data.message : 'Gagal memuat data dashboard.');
+                }
+
+                if (!data || !data.summary || !data.todaySummary || !Array.isArray(data.employeeStats) || !Array.isArray(data.recentAttendances)) {
+                    throw new Error('Format data dashboard tidak valid.');
+                }
 
                 // Update stats
-                document.getElementById('statIn').textContent = data.summary.total_in;
-                document.getElementById('statOut').textContent = data.summary.total_out;
-                document.getElementById('statIzin').textContent = data.summary.total_izin;
-                document.getElementById('statSakit').textContent = data.summary.total_sakit;
-                document.getElementById('statAbsen').textContent = data.summary.total_absen;
-                document.getElementById('statTukar').textContent = data.summary.total_tukar_libur;
+                setText('statIn', data.summary.total_in);
+                setText('statOut', data.summary.total_out);
+                setText('statIzin', data.summary.total_izin);
+                setText('statSakit', data.summary.total_sakit);
+                setText('statAbsen', data.summary.total_absen);
+                setText('statTukar', data.summary.total_tukar_libur);
 
                 // Update chart
                 initChart(data.summary);
@@ -1630,48 +1657,54 @@
 
                 // Update employee stats table
                 const empBody = document.getElementById('employeeStatsBody');
-                empBody.innerHTML = data.employeeStats.map(s => `
-                    <tr>
-                        <td>${s.name}</td>
-                        <td>${s.total_in}</td>
-                        <td>${s.total_out}</td>
-                        <td>${s.total_izin}</td>
-                        <td>${s.total_sakit}</td>
-                        <td>${s.avg_work_duration}</td>
-                    </tr>
-                `).join('');
+                if (empBody) {
+                    empBody.innerHTML = data.employeeStats.map(s => `
+                        <tr>
+                            <td>${s.name}</td>
+                            <td>${s.total_in}</td>
+                            <td>${s.total_out}</td>
+                            <td>${s.total_izin}</td>
+                            <td>${s.total_sakit}</td>
+                            <td>${s.avg_work_duration}</td>
+                        </tr>
+                    `).join('');
+                }
 
                 // Update recent attendance
                 const recBody = document.getElementById('recentAttendanceBody');
-                recBody.innerHTML = data.recentAttendances.map(a => `
-                    <tr>
-                        <td>${a.employee_name}</td>
-                        <td>${a.employee_id}</td>
-                        <td>${a.department || '-'}</td>
-                        <td><span class="type-badge type-${a.type}">${a.type_label}</span></td>
-                        <td>${a.date}</td>
-                        <td>${a.time}</td>
-                        <td>${a.distance ? Math.round(a.distance) + 'm' : '-'}</td>
-                    </tr>
-                `).join('');
+                if (recBody) {
+                    recBody.innerHTML = data.recentAttendances.map(a => `
+                        <tr>
+                            <td>${a.employee_name}</td>
+                            <td>${a.employee_id}</td>
+                            <td>${a.department || '-'}</td>
+                            <td><span class="type-badge type-${a.type}">${a.type_label}</span></td>
+                            <td>${a.date}</td>
+                            <td>${a.time}</td>
+                            <td>${a.distance ? Math.round(a.distance) + 'm' : '-'}</td>
+                        </tr>
+                    `).join('');
+                }
 
                 // Also update history
                 const histBody = document.getElementById('historyBody');
-                histBody.innerHTML = data.recentAttendances.map(a => `
-                    <tr>
-                        <td>${a.employee_name}</td>
-                        <td>${a.employee_id}</td>
-                        <td><span class="type-badge type-${a.type}">${a.type_label}</span></td>
-                        <td>${a.date}</td>
-                        <td>${a.time}</td>
-                        <td>${a.distance ? Math.round(a.distance) + 'm' : '-'}</td>
-                        <td>${a.note || '-'}</td>
-                    </tr>
-                `).join('');
+                if (histBody) {
+                    histBody.innerHTML = data.recentAttendances.map(a => `
+                        <tr>
+                            <td>${a.employee_name}</td>
+                            <td>${a.employee_id}</td>
+                            <td><span class="type-badge type-${a.type}">${a.type_label}</span></td>
+                            <td>${a.date}</td>
+                            <td>${a.time}</td>
+                            <td>${a.distance ? Math.round(a.distance) + 'm' : '-'}</td>
+                            <td>${a.note || '-'}</td>
+                        </tr>
+                    `).join('');
+                }
 
                 showToast('Data berhasil diperbarui', 'success');
             } catch (err) {
-                showToast('Gagal memuat data', 'error');
+                showToast(err.message || 'Gagal memuat data', 'error');
             }
         }
 
@@ -2018,14 +2051,18 @@
                 const res = await fetch(`/admin/swap-requests/${id}/eligible-employees`);
                 const json = await res.json();
 
-                selectEl.innerHTML = '<option value="">Tanpa Tukar (Hanya Ubah Libur Sendiri)</option>';
-                if (json.success && json.data.length > 0) {
-                    json.data.forEach(emp => {
+                const eligibleEmployees = (json.success && Array.isArray(json.data)) ? json.data : [];
+                if (eligibleEmployees.length === 0) {
+                    selectEl.innerHTML = '<option value="">Tanpa Tukar (Hanya Ubah Libur Sendiri)</option>';
+                } else {
+                    selectEl.innerHTML = '';
+                    eligibleEmployees.forEach(emp => {
                         const opt = document.createElement('option');
                         opt.value = emp.employee_id;
                         opt.text = `Tukar Dengan: ${emp.name} — ${emp.position || '-'}`;
                         selectEl.appendChild(opt);
                     });
+                    selectEl.selectedIndex = 0;
                 }
             } catch (e) {
                 selectEl.innerHTML = '<option value="">Gagal memuat data karyawan</option>';
@@ -2040,7 +2077,15 @@
 
         async function submitApproveSwap() {
             const id = document.getElementById('approveSwapId').value;
-            let targetId = document.getElementById('approveSwapWithId').value;
+            const selectEl = document.getElementById('approveSwapWithId');
+            const hasEligibleOptions = Array.from(selectEl.options).some(opt => opt.value !== '');
+            let targetId = selectEl.value;
+
+            if (hasEligibleOptions && !targetId) {
+                showNoticeModal('Pilih karyawan pengganti karena ada kandidat yang sedang libur di tanggal target.', 'Validasi Gagal');
+                return;
+            }
+
             if (targetId === '') {
                 targetId = null;
             }
