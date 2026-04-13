@@ -729,9 +729,19 @@ class AdminController extends Controller
     private function getTodaySummary(Request $request)
     {
         $totalEmployees = Employee::where('is_active', true);
-        $totalEmployees = $this->applyEmployeeScope($totalEmployees, $request)->count();
+        $employeeIds = $this->applyEmployeeScope($totalEmployees, $request)
+            ->pluck('employee_id');
+        $totalEmployees = $employeeIds->count();
 
-        $todayIn = Attendance::whereDate('date', today())
+        $todayDate = today();
+        $todayOff = 0;
+        foreach ($employeeIds as $employeeId) {
+            if (OffDay::isOffDay($employeeId, $todayDate)) {
+                $todayOff++;
+            }
+        }
+
+        $todayIn = Attendance::whereDate('date', $todayDate)
             ->where('type', 'IN')
             ->whereHas('employee', function ($query) use ($request) {
                 $this->applyEmployeeScope($query, $request);
@@ -739,7 +749,7 @@ class AdminController extends Controller
             ->distinct('employee_id')
             ->count('employee_id');
 
-        $todayOut = Attendance::whereDate('date', today())
+        $todayOut = Attendance::whereDate('date', $todayDate)
             ->where('type', 'OUT')
             ->whereHas('employee', function ($query) use ($request) {
                 $this->applyEmployeeScope($query, $request);
@@ -747,7 +757,7 @@ class AdminController extends Controller
             ->distinct('employee_id')
             ->count('employee_id');
 
-        $todayIzin = Attendance::whereDate('date', today())
+        $todayIzin = Attendance::whereDate('date', $todayDate)
             ->where('type', 'IZIN')
             ->whereHas('employee', function ($query) use ($request) {
                 $this->applyEmployeeScope($query, $request);
@@ -755,7 +765,7 @@ class AdminController extends Controller
             ->distinct('employee_id')
             ->count('employee_id');
 
-        $todaySakit = Attendance::whereDate('date', today())
+        $todaySakit = Attendance::whereDate('date', $todayDate)
             ->where('type', 'SAKIT')
             ->whereHas('employee', function ($query) use ($request) {
                 $this->applyEmployeeScope($query, $request);
@@ -763,10 +773,13 @@ class AdminController extends Controller
             ->distinct('employee_id')
             ->count('employee_id');
 
-        $notPresent = $totalEmployees - $todayIn - $todayIzin - $todaySakit;
+        $workingEmployees = max(0, $totalEmployees - $todayOff);
+        $notPresent = $workingEmployees - $todayIn - $todayIzin - $todaySakit;
 
         return [
             'total_employees' => $totalEmployees,
+            'off_today' => $todayOff,
+            'working_employees' => $workingEmployees,
             'present' => $todayIn,
             'out' => $todayOut,
             'izin' => $todayIzin,

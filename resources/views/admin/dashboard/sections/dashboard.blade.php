@@ -61,6 +61,10 @@
                 <div class="today-stat-label">Sakit</div>
             </div>
             <div class="today-stat">
+                <div class="today-stat-value" id="todayOff" style="color:var(--accent-cyan)">-</div>
+                <div class="today-stat-label">Libur</div>
+            </div>
+            <div class="today-stat">
                 <div class="today-stat-value" id="todayNotPresent" style="color:var(--accent-pink)">-</div>
                 <div class="today-stat-label">Belum Hadir</div>
             </div>

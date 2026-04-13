@@ -1599,6 +1599,7 @@
             document.getElementById('todayOut').textContent = data.out;
             document.getElementById('todayIzin').textContent = data.izin;
             document.getElementById('todaySakit').textContent = data.sakit;
+            document.getElementById('todayOff').textContent = data.off_today;
             document.getElementById('todayNotPresent').textContent = data.not_present;
         }
 
