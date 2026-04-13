@@ -630,9 +630,16 @@ class AdminController extends Controller
             })
             ->count();
 
-        $totalTukarLibur = Attendance::whereMonth('date', $month)
-            ->whereYear('date', $year)
-            ->where('type', 'TUKAR_LIBUR')
+        $totalTukarLibur = ScheduleSwapRequest::where('status', ScheduleSwapRequest::STATUS_APPROVED)
+            ->where(function ($query) use ($month, $year) {
+                $query->where(function ($q) use ($month, $year) {
+                    $q->whereMonth('requested_date', $month)
+                        ->whereYear('requested_date', $year);
+                })->orWhere(function ($q) use ($month, $year) {
+                    $q->whereMonth('target_date', $month)
+                        ->whereYear('target_date', $year);
+                });
+            })
             ->whereHas('employee', function ($query) use ($request) {
                 $this->applyEmployeeScope($query, $request);
             })
