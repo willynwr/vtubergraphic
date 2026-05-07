@@ -594,6 +594,34 @@ class AdminController extends Controller
 
             // Hadir/ON berarti dia memiliki IN dan OUT pada hari tersebut
             $attendanceDates = array_values(array_intersect($inDates, $outDates));
+            
+            $attendanceDetails = [];
+            $attsByDate = $monthlyAttendances->groupBy(function($att) {
+                return \Carbon\Carbon::parse($att->date)->format('Y-m-d');
+            });
+            
+            foreach ($attendanceDates as $date) {
+                if ($attsByDate->has($date)) {
+                    $atts = $attsByDate->get($date);
+                    $in = $atts->where('type', 'IN')->first();
+                    $out = $atts->where('type', 'OUT')->sortByDesc('time')->first(); // Get the latest OUT just in case
+                    
+                    if ($in && $out) {
+                        $inTime = \Carbon\Carbon::parse($in->time);
+                        $outTime = \Carbon\Carbon::parse($out->time);
+                        
+                        $diffInMinutes = $inTime->diffInMinutes($outTime);
+                        $hours = floor($diffInMinutes / 60);
+                        $minutes = $diffInMinutes % 60;
+                        
+                        $attendanceDetails[$date] = [
+                            'clock_in' => $inTime->format('H:i'),
+                            'clock_out' => $outTime->format('H:i'),
+                            'duration' => $hours . ' jam ' . $minutes . ' menit',
+                        ];
+                    }
+                }
+            }
 
             $offDaysByEmployee[$emp->employee_id] = [
                 'name' => $emp->name,
@@ -602,6 +630,7 @@ class AdminController extends Controller
                 'off_day_names' => $emp->off_day_names,
                 'dates' => $dates,
                 'attendance_dates' => $attendanceDates,
+                'attendance_details' => $attendanceDetails,
             ];
         }
 

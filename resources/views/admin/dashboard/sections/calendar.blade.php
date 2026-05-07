@@ -121,6 +121,47 @@
  </div>
 
 <style>
+    /* Custom tooltip for attendance without delay */
+    .attendance-tooltip {
+        position: relative;
+    }
+    .attendance-tooltip .tooltip-content {
+        visibility: hidden;
+        opacity: 0;
+        transition: opacity 0.15s ease-in-out;
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        margin-bottom: 6px;
+        background-color: #3d2b3a;
+        color: white;
+        font-size: 11px;
+        padding: 6px 8px;
+        border-radius: 4px;
+        white-space: nowrap;
+        z-index: 50;
+        font-weight: normal;
+        text-align: center;
+        line-height: 1.4;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        pointer-events: none;
+    }
+    .attendance-tooltip .tooltip-content::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -4px;
+        border-width: 4px;
+        border-style: solid;
+        border-color: #3d2b3a transparent transparent transparent;
+    }
+    .attendance-tooltip:hover .tooltip-content {
+        visibility: visible;
+        opacity: 1;
+    }
+
     /* Styling scrollbar hanya untuk table rekap */
     .scrollbar-thin::-webkit-scrollbar { height: 8px; }
     .scrollbar-thin::-webkit-scrollbar-track { background: #fdfafc; border-radius: 8px; }
@@ -220,10 +261,24 @@
                 for (let day = 1; day <= daysInMonth; day++) {
                     const dateStr = `${adminViewYear}-${pad0(adminViewMonth)}-${pad0(day)}`;
                     const isAttended = (emp.attendance_dates || []).includes(dateStr);
+                    const attendanceDetail = emp.attendance_details && emp.attendance_details[dateStr];
                     
                     if (isAttended) {
                         totalHadir++;
-                        rowHtml += `<td class="p-2 border-b border-l border-[#ffe6f0] text-center"><span class="inline-flex items-center justify-center min-w-[32px] h-[24px] text-[11px] font-bold text-[#27ae60] bg-[#e8f8f0] border border-[#bce8d1] rounded-md leading-none shadow-sm">ON</span></td>`;
+                        if (attendanceDetail) {
+                            rowHtml += `
+                            <td class="p-2 border-b border-l border-[#ffe6f0] text-center">
+                                <div class="attendance-tooltip inline-flex justify-center items-center">
+                                    <span class="inline-flex items-center justify-center min-w-[32px] h-[24px] text-[11px] font-bold text-[#27ae60] bg-[#e8f8f0] border border-[#bce8d1] rounded-md leading-none shadow-sm cursor-help hover:bg-[#d1f0e0] transition-colors">ON</span>
+                                    <div class="tooltip-content">
+                                        <div>IN: ${attendanceDetail.clock_in} | OUT: ${attendanceDetail.clock_out}</div>
+                                        <div>Kerja: ${attendanceDetail.duration}</div>
+                                    </div>
+                                </div>
+                            </td>`;
+                        } else {
+                            rowHtml += `<td class="p-2 border-b border-l border-[#ffe6f0] text-center"><span class="inline-flex items-center justify-center min-w-[32px] h-[24px] text-[11px] font-bold text-[#27ae60] bg-[#e8f8f0] border border-[#bce8d1] rounded-md leading-none shadow-sm">ON</span></td>`;
+                        }
                     } else {
                         rowHtml += `<td class="p-2 border-b border-l border-[#ffe6f0] text-center"><span class="inline-flex items-center justify-center min-w-[32px] h-[24px] text-[11px] font-bold text-[#e74c3c] bg-[#fdf2f2] border border-[#facaca] rounded-md leading-none shadow-sm">OFF</span></td>`;
                     }
