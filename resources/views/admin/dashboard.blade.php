@@ -2044,7 +2044,7 @@
             document.getElementById('lblTargetDateApprove').innerText = targetDateStr || 'tanggal target';
             
             const selectEl = document.getElementById('approveSwapWithId');
-            selectEl.innerHTML = '<option value="">Memuat data karyawan yang masuk kriteria...</option>';
+            selectEl.innerHTML = '<option value="">Tanpa Tukar (Hanya Ubah Libur Sendiri)</option>';
             document.getElementById('approveSwapModal').classList.add('show');
             
             try {
@@ -2052,20 +2052,15 @@
                 const json = await res.json();
 
                 const eligibleEmployees = (json.success && Array.isArray(json.data)) ? json.data : [];
-                if (eligibleEmployees.length === 0) {
-                    selectEl.innerHTML = '<option value="">Tanpa Tukar (Hanya Ubah Libur Sendiri)</option>';
-                } else {
-                    selectEl.innerHTML = '';
-                    eligibleEmployees.forEach(emp => {
-                        const opt = document.createElement('option');
-                        opt.value = emp.employee_id;
-                        opt.text = `Tukar Dengan: ${emp.name} — ${emp.position || '-'}`;
-                        selectEl.appendChild(opt);
-                    });
-                    selectEl.selectedIndex = 0;
-                }
+                eligibleEmployees.forEach(emp => {
+                    const opt = document.createElement('option');
+                    opt.value = emp.employee_id;
+                    opt.text = `Tukar Dengan: ${emp.name} — ${emp.position || '-'}`;
+                    selectEl.appendChild(opt);
+                });
+                selectEl.selectedIndex = 0;
             } catch (e) {
-                selectEl.innerHTML = '<option value="">Gagal memuat data karyawan</option>';
+                selectEl.innerHTML = '<option value="">Tanpa Tukar (Hanya Ubah Libur Sendiri)</option>';
             }
         }
 
@@ -2078,13 +2073,7 @@
         async function submitApproveSwap() {
             const id = document.getElementById('approveSwapId').value;
             const selectEl = document.getElementById('approveSwapWithId');
-            const hasEligibleOptions = Array.from(selectEl.options).some(opt => opt.value !== '');
             let targetId = selectEl.value;
-
-            if (hasEligibleOptions && !targetId) {
-                showNoticeModal('Pilih karyawan pengganti karena ada kandidat yang sedang libur di tanggal target.', 'Validasi Gagal');
-                return;
-            }
 
             if (targetId === '') {
                 targetId = null;
