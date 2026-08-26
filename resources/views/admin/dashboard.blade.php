@@ -960,6 +960,12 @@
             flex-direction: column;
             gap: 8px;
             align-items: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .qr-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 30px rgba(180, 120, 160, 0.14);
         }
 
         .qr-preview {
@@ -967,25 +973,17 @@
             aspect-ratio: 1 / 1;
             display: block;
             border-radius: 14px;
-            background: #fff;
+            background: #fdf7fb;
             padding: 6px;
-            border: 1px solid rgba(61, 43, 58, 0.06);
+            border: 1px solid rgba(179, 136, 217, 0.2);
         }
 
         .qr-card-label {
             width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            font-size: 11px;
-            color: var(--text-secondary);
-        }
-
-        .qr-card-code {
-            font-weight: 700;
+            font-size: 10.5px;
+            font-weight: 600;
             color: var(--text-primary);
-            font-variant-numeric: tabular-nums;
+            text-align: center;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -1006,7 +1004,9 @@
         }
 
         .btn-qr-download:hover {
-            background: rgba(232, 123, 176, 0.14);
+            background: linear-gradient(90deg, var(--accent-pink), #b388d9);
+            border-color: transparent;
+            color: #fff;
             transform: translateY(-1px);
         }
 
@@ -2000,22 +2000,85 @@
             );
         }
 
+        const QR_BORDER_URL = "{{ asset('QR_BORDER.webp') }}";
+        // Cutout in QR_BORDER.webp (1200x1500) where the QR + label are placed.
+        const QR_BORDER_CUTOUT = { x: 133, y: 237, w: 930, h: 1014 };
+
         function buildQrUrl(employeeId) {
-            return `https://api.qrserver.com/v1/create-qr-code/?size=512x512&margin=12&data=${encodeURIComponent(employeeId)}&bgcolor=ffffff&color=111111`;
+            return `https://api.qrserver.com/v1/create-qr-code/?size=512x512&margin=10&qzone=1&ecc=H&data=${encodeURIComponent(employeeId)}&bgcolor=ffffff&color=6b3f73`;
+        }
+
+        function loadImage(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = src;
+            });
+        }
+
+        async function buildEmployeeQrImage(employeeId, employeeName) {
+            const qrUrl = buildQrUrl(employeeId);
+            const response = await fetch(qrUrl, { mode: 'cors' });
+            if (!response.ok) {
+                throw new Error('QR image request failed');
+            }
+            const blob = await response.blob();
+            const objectUrl = URL.createObjectURL(blob);
+
+            const [qrImg, borderImg] = await Promise.all([
+                loadImage(objectUrl),
+                loadImage(QR_BORDER_URL),
+            ]);
+
+            const width = borderImg.naturalWidth || 1200;
+            const height = borderImg.naturalHeight || 1500;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, height);
+
+            const { x: cutX, y: cutY, w: cutW, h: cutH } = QR_BORDER_CUTOUT;
+            const qrSize = Math.round(cutW * 0.92);
+            const qrX = Math.round(cutX + (cutW - qrSize) / 2);
+            const qrY = cutY + Math.round(cutH * 0.02);
+            ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+
+            ctx.textAlign = 'center';
+            const centerX = cutX + cutW / 2;
+            const maxLabelWidth = cutW - 40;
+
+            ctx.fillStyle = '#3d2b3a';
+            ctx.font = '700 46px Poppins, sans-serif';
+            let name = employeeName || '';
+            while (ctx.measureText(name).width > maxLabelWidth && name.length > 3) {
+                name = name.slice(0, -1);
+            }
+            if (name !== employeeName) name = name.slice(0, -1) + '…';
+            const nameY = qrY + qrSize + 58;
+            ctx.fillText(name, centerX, nameY);
+
+            ctx.fillStyle = '#8a5c8f';
+            ctx.font = '600 34px "Courier New", monospace';
+            ctx.fillText(employeeId, centerX, nameY + 50);
+
+            ctx.drawImage(borderImg, 0, 0, width, height);
+
+            URL.revokeObjectURL(objectUrl);
+            return canvas;
         }
 
         async function downloadEmployeeQr(employeeId, employeeName) {
-            const qrUrl = buildQrUrl(employeeId);
             const fileName = `qr-${employeeId}.png`;
 
             try {
-                const response = await fetch(qrUrl, { mode: 'cors' });
-                if (!response.ok) {
-                    throw new Error('QR image request failed');
-                }
-
-                const blob = await response.blob();
-                const objectUrl = URL.createObjectURL(blob);
+                const canvas = await buildEmployeeQrImage(employeeId, employeeName);
+                const imgBlob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+                const objectUrl = URL.createObjectURL(imgBlob);
                 const link = document.createElement('a');
                 link.href = objectUrl;
                 link.download = fileName;
@@ -2026,6 +2089,7 @@
 
                 showToast(`QR ${employeeName} berhasil didownload`, 'success');
             } catch (err) {
+                const qrUrl = buildQrUrl(employeeId);
                 const link = document.createElement('a');
                 link.href = qrUrl;
                 link.target = '_blank';
