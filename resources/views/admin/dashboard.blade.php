@@ -2000,21 +2000,8 @@
             );
         }
 
-        const QR_BORDER_URL = "/QR_BORDER.webp";
-        // Cutout in QR_BORDER.webp (1200x1500) where the QR + label are placed.
-        const QR_BORDER_CUTOUT = { x: 133, y: 237, w: 930, h: 1014 };
-
         function buildQrUrl(employeeId) {
             return `https://api.qrserver.com/v1/create-qr-code/?size=512x512&margin=10&qzone=1&ecc=H&data=${encodeURIComponent(employeeId)}&bgcolor=ffffff&color=6b3f73`;
-        }
-
-        function loadImage(src) {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                img.onload = () => resolve(img);
-                img.onerror = reject;
-                img.src = src;
-            });
         }
 
         async function buildEmployeeQrImage(employeeId, employeeName) {
@@ -2026,13 +2013,18 @@
             const blob = await response.blob();
             const objectUrl = URL.createObjectURL(blob);
 
-            const [qrImg, borderImg] = await Promise.all([
-                loadImage(objectUrl),
-                loadImage(QR_BORDER_URL),
-            ]);
+            const qrImg = await new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = objectUrl;
+            });
 
-            const width = borderImg.naturalWidth || 1200;
-            const height = borderImg.naturalHeight || 1500;
+            const qrSize = 512;
+            const padding = 24;
+            const labelHeight = 48;
+            const width = qrSize + padding * 2;
+            const height = qrSize + padding * 2 + labelHeight;
 
             const canvas = document.createElement('canvas');
             canvas.width = width;
@@ -2042,31 +2034,20 @@
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, width, height);
 
-            const { x: cutX, y: cutY, w: cutW, h: cutH } = QR_BORDER_CUTOUT;
-            const qrSize = Math.round(cutW * 0.92);
-            const qrX = Math.round(cutX + (cutW - qrSize) / 2);
-            const qrY = cutY + Math.round(cutH * 0.02);
-            ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+            ctx.drawImage(qrImg, padding, padding, qrSize, qrSize);
 
             ctx.textAlign = 'center';
-            const centerX = cutX + cutW / 2;
-            const maxLabelWidth = cutW - 40;
-
             ctx.fillStyle = '#3d2b3a';
-            ctx.font = '700 46px Poppins, sans-serif';
-            let name = employeeName || '';
-            while (ctx.measureText(name).width > maxLabelWidth && name.length > 3) {
-                name = name.slice(0, -1);
+            ctx.font = '600 26px Poppins, sans-serif';
+            let label = `${employeeName} - ${employeeId}`;
+            const maxLabelWidth = width - padding * 2;
+            while (ctx.measureText(label).width > maxLabelWidth && label.length > 3) {
+                label = label.slice(0, -1);
             }
-            if (name !== employeeName) name = name.slice(0, -1) + '…';
-            const nameY = qrY + qrSize + 58;
-            ctx.fillText(name, centerX, nameY);
-
-            ctx.fillStyle = '#8a5c8f';
-            ctx.font = '600 34px "Courier New", monospace';
-            ctx.fillText(employeeId, centerX, nameY + 50);
-
-            ctx.drawImage(borderImg, 0, 0, width, height);
+            if (label !== `${employeeName} - ${employeeId}`) {
+                label = label.slice(0, -1) + '…';
+            }
+            ctx.fillText(label, width / 2, padding + qrSize + labelHeight / 2 + 9);
 
             URL.revokeObjectURL(objectUrl);
             return canvas;
