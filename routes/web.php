@@ -40,6 +40,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/employees', [AdminController::class, 'storeEmployee'])->name('employees.store');
         Route::delete('/employees/{employee}', [AdminController::class, 'deleteEmployee'])->name('employees.delete');
         Route::get('/employees/{employee}/detail', [AdminController::class, 'employeeDetail'])->name('employees.detail');
+        Route::get('/employees/{employee}/qr', [AdminController::class, 'employeeQr'])->name('employees.qr');
 
         // Location Management
         Route::get('/locations', [AdminController::class, 'locations'])->name('locations');

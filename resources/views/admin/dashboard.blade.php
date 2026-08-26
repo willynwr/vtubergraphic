@@ -978,18 +978,9 @@
             border: 1px solid rgba(179, 136, 217, 0.2);
         }
 
-        .qr-card-label {
-            width: 100%;
-            font-size: 10.5px;
-            font-weight: 600;
-            color: var(--text-primary);
-            text-align: center;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
         .btn-qr-download {
+            display: block;
+            box-sizing: border-box;
             width: 100%;
             padding: 8px 10px;
             border: 1px solid rgba(232, 123, 176, 0.18);
@@ -999,6 +990,8 @@
             font-family: 'Poppins', sans-serif;
             font-size: 11px;
             font-weight: 600;
+            text-align: center;
+            text-decoration: none;
             cursor: pointer;
             transition: all 0.2s;
         }
@@ -1998,90 +1991,6 @@
                 () => showToast('Gagal mengambil lokasi', 'error'),
                 { enableHighAccuracy: true }
             );
-        }
-
-        function buildQrUrl(employeeId) {
-            return `https://api.qrserver.com/v1/create-qr-code/?size=512x512&margin=10&qzone=1&ecc=H&data=${encodeURIComponent(employeeId)}&bgcolor=ffffff&color=6b3f73`;
-        }
-
-        async function buildEmployeeQrImage(employeeId, employeeName) {
-            const qrUrl = buildQrUrl(employeeId);
-            const response = await fetch(qrUrl, { mode: 'cors' });
-            if (!response.ok) {
-                throw new Error('QR image request failed');
-            }
-            const blob = await response.blob();
-            const objectUrl = URL.createObjectURL(blob);
-
-            const qrImg = await new Promise((resolve, reject) => {
-                const img = new Image();
-                img.onload = () => resolve(img);
-                img.onerror = reject;
-                img.src = objectUrl;
-            });
-
-            const qrSize = 512;
-            const padding = 24;
-            const labelHeight = 48;
-            const width = qrSize + padding * 2;
-            const height = qrSize + padding * 2 + labelHeight;
-
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, width, height);
-
-            ctx.drawImage(qrImg, padding, padding, qrSize, qrSize);
-
-            ctx.textAlign = 'center';
-            ctx.fillStyle = '#3d2b3a';
-            ctx.font = '600 26px Poppins, sans-serif';
-            let label = `${employeeName} - ${employeeId}`;
-            const maxLabelWidth = width - padding * 2;
-            while (ctx.measureText(label).width > maxLabelWidth && label.length > 3) {
-                label = label.slice(0, -1);
-            }
-            if (label !== `${employeeName} - ${employeeId}`) {
-                label = label.slice(0, -1) + '…';
-            }
-            ctx.fillText(label, width / 2, padding + qrSize + labelHeight / 2 + 9);
-
-            URL.revokeObjectURL(objectUrl);
-            return canvas;
-        }
-
-        async function downloadEmployeeQr(employeeId, employeeName) {
-            const fileName = `qr-${employeeId}.png`;
-
-            try {
-                const canvas = await buildEmployeeQrImage(employeeId, employeeName);
-                const imgBlob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-                const objectUrl = URL.createObjectURL(imgBlob);
-                const link = document.createElement('a');
-                link.href = objectUrl;
-                link.download = fileName;
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-                URL.revokeObjectURL(objectUrl);
-
-                showToast(`QR ${employeeName} berhasil didownload`, 'success');
-            } catch (err) {
-                console.error('downloadEmployeeQr failed:', err);
-                const qrUrl = buildQrUrl(employeeId);
-                const link = document.createElement('a');
-                link.href = qrUrl;
-                link.target = '_blank';
-                link.rel = 'noopener';
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-
-                showToast('QR dibuka di tab baru. Silakan simpan gambar tersebut.', 'success');
-            }
         }
 
         // Swap request approval

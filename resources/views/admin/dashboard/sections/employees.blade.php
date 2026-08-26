@@ -71,14 +71,11 @@
                                 data-dept="{{ $emp->department }}">
                                 <td>
                                     <div class="qr-card">
-                                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=256x256&margin=10&qzone=1&ecc=H&data={{ rawurlencode($emp->employee_id) }}&bgcolor=ffffff&color=6b3f73"
+                                        <img src="{{ route('admin.employees.qr', $emp) }}"
                                             class="qr-preview" alt="QR {{ $emp->employee_id }}" loading="lazy">
-                                        <div class="qr-card-label">{{ $emp->name }} - {{ $emp->employee_id }}</div>
-                                        <button class="btn-qr-download" type="button"
-                                            data-employee-id="{{ $emp->employee_id }}" data-employee-name="{{ $emp->name }}"
-                                            onclick="downloadEmployeeQr(this.dataset.employeeId, this.dataset.employeeName)">
+                                        <a class="btn-qr-download" href="{{ route('admin.employees.qr', $emp) }}?download=1" download="qr-{{ $emp->employee_id }}.png">
                                             Download
-                                        </button>
+                                        </a>
                                     </div>
                                 </td>
                                 <td>{{ $emp->employee_id }}</td>

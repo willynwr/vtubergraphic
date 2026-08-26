@@ -10,6 +10,14 @@ use App\Models\OffDay;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
 use Carbon\Carbon;
+use Endroid\QrCode\Builder\Builder as QrBuilder;
+use Endroid\QrCode\Color\Color;
+use Endroid\QrCode\Encoding\Encoding;
+use Endroid\QrCode\ErrorCorrectionLevel;
+use Endroid\QrCode\Label\Font\Font;
+use Endroid\QrCode\Label\LabelAlignment;
+use Endroid\QrCode\RoundBlockSizeMode;
+use Endroid\QrCode\Writer\PngWriter;
 
 class AdminController extends Controller
 {
@@ -405,6 +413,38 @@ class AdminController extends Controller
             'success' => true,
             'message' => 'Lokasi berhasil dihapus.',
         ]);
+    }
+
+    /**
+     * Generate the employee QR code (with name + ID label) server-side.
+     */
+    public function employeeQr(Employee $employee, Request $request)
+    {
+        if (!$this->canAccessEmployee($employee, $request)) {
+            abort(403, 'Akses ditolak untuk data karyawan ini.');
+        }
+
+        $result = (new QrBuilder(
+            writer: new PngWriter(),
+            data: $employee->employee_id,
+            encoding: new Encoding('UTF-8'),
+            errorCorrectionLevel: ErrorCorrectionLevel::High,
+            size: 512,
+            margin: 16,
+            roundBlockSizeMode: RoundBlockSizeMode::Margin,
+            foregroundColor: new Color(107, 63, 115),
+            backgroundColor: new Color(255, 255, 255),
+            labelText: $employee->name . ' - ' . $employee->employee_id,
+            labelFont: new Font(resource_path('fonts/Poppins-Bold.ttf'), 20),
+            labelAlignment: LabelAlignment::Center,
+            labelTextColor: new Color(61, 43, 58),
+        ))->build();
+
+        $filename = 'qr-' . $employee->employee_id . '.png';
+
+        return response($result->getString(), 200)
+            ->header('Content-Type', $result->getMimeType())
+            ->header('Content-Disposition', ($request->boolean('download') ? 'attachment' : 'inline') . '; filename="' . $filename . '"');
     }
 
     /**
