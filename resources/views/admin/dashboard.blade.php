@@ -2000,7 +2000,7 @@
             );
         }
 
-        const QR_BORDER_URL = "{{ asset('QR_BORDER.webp') }}";
+        const QR_BORDER_URL = "/QR_BORDER.webp";
         // Cutout in QR_BORDER.webp (1200x1500) where the QR + label are placed.
         const QR_BORDER_CUTOUT = { x: 133, y: 237, w: 930, h: 1014 };
 
@@ -2089,6 +2089,7 @@
 
                 showToast(`QR ${employeeName} berhasil didownload`, 'success');
             } catch (err) {
+                console.error('downloadEmployeeQr failed:', err);
                 const qrUrl = buildQrUrl(employeeId);
                 const link = document.createElement('a');
                 link.href = qrUrl;
